@@ -1,195 +1,73 @@
-# MKP Formulation Hierarchy
+# Branch-and-Price Multiple Knapsack Toolkit
 
-This project implements a complete formulation hierarchy for the Multiple Knapsack Problem (MKP), from reading instances to the Dantzig-Wolfe master problem formulation.
+This repository implements a full formulation hierarchy and column-generation loop for the Multiple Knapsack Problem (MKP). It includes classic and relaxed formulations, Dantzig–Wolfe master construction, pattern generation, and a runnable demo that stitches everything together.
 
-## Overview
+## Features
+- **Classic, L2, and Dantzig–Wolfe formulations** with helpers to convert solutions between representations. 【F:src/main/java/ca/udem/gaillarz/formulation/ClassicFormulation.java†L12-L73】【F:src/main/java/ca/udem/gaillarz/formulation/L2RelaxedFormulation.java†L14-L74】【F:src/main/java/ca/udem/gaillarz/formulation/DantzigWolfeMaster.java†L28-L96】
+- **Pattern management** (initialization, statistics, variables) to seed and expand the master problem. 【F:src/main/java/ca/udem/gaillarz/formulation/PatternInitializer.java†L18-L96】【F:src/main/java/ca/udem/gaillarz/formulation/PatternVariable.java†L10-L65】【F:src/main/java/ca/udem/gaillarz/formulation/PatternStatistics.java†L9-L78】
+- **Column generation loop** with OR-Tools-backed LP solving, pricing, and progress reporting. 【F:src/main/java/solver/ColumnGeneration.java†L19-L132】【F:src/main/java/solver/ORToolsSolver.java†L10-L75】【F:src/main/java/solver/CGResult.java†L8-L63】
+- **Interactive demo** that loads instances, runs the formulation pipeline, and prints readable tables. 【F:src/main/java/ca/udem/gaillarz/Main.java†L19-L154】
 
-The implementation includes four main formulations:
+## Project layout
+- `src/main/java/ca/udem/gaillarz/model/` — MKP data model (`Item`, `Knapsack`, `MKPInstance`). 【F:src/main/java/ca/udem/gaillarz/model/MKPInstance.java†L8-L147】
+- `src/main/java/ca/udem/gaillarz/io/` — Parsing helpers and validation for instance files. 【F:src/main/java/ca/udem/gaillarz/io/InstanceReader.java†L20-L156】
+- `src/main/java/ca/udem/gaillarz/formulation/` — Classic/L2/DW formulations, pattern utilities, and conversions. 【F:src/main/java/ca/udem/gaillarz/formulation/DantzigWolfeMaster.java†L28-L130】
+- `src/main/java/solver/` — Lightweight linear programming and column-generation framework, including OR-Tools integration. 【F:src/main/java/solver/LinearProgram.java†L7-L94】【F:src/main/java/solver/ORToolsSolver.java†L10-L75】
+- `src/main/resources/` — Example instance descriptions and metadata. 【F:src/main/resources/readme.txt†L1-L8】
+- `src/test/` — JUnit 5 tests that cover the formulations, pattern generation, and DW master setup. 【F:src/test/java/ca/udem/gaillarz/formulation/DantzigWolfeMasterTest.java†L13-L108】【F:src/test/java/ca/udem/gaillarz/formulation/PatternGeneratorTest.java†L11-L99】
 
-1. **MKP Instance** - Raw problem data (items with weights/profits, knapsacks with capacities)
-2. **Classic Formulation** - Standard MKP formulation (equations 1-4)
-3. **L2 Relaxed Formulation** - Lagrangian relaxation with t_j variables (equations 13-18)
-4. **Dantzig-Wolfe Master Formulation** - Pattern-based reformulation (equations 28-33)
+## Getting started
+### Prerequisites
+- Java 25
+- Maven 3.9+
+- OR-Tools native libraries are fetched via Maven; no manual install is required.
 
-## Mathematical Formulations
-
-### Classic MKP (Equations 1-4)
-
-```
-max  Σᵢ Σⱼ pⱼ · xᵢⱼ                          (1)
-s.t. Σⱼ wⱼ · xᵢⱼ ≤ cᵢ     for all i          (2)
-     Σᵢ xᵢⱼ ≤ 1           for all j          (3)
-     xᵢⱼ ∈ {0,1}                             (4)
-```
-
-### L2 Relaxed Formulation (Equations 13-18)
-
-Introduces item selection variables `tⱼ`:
-
-```
-max  Σⱼ pⱼ · tⱼ                              (13)
-s.t. Σⱼ wⱼ · xᵢⱼ ≤ cᵢ     for all i          (14)
-     tⱼ ≤ Σᵢ xᵢⱼ          for all j          (15)
-     Σⱼ wⱼ · tⱼ ≤ Σᵢ cᵢ                      (16)
-     tⱼ ∈ {0,1}, xᵢⱼ ∈ {0,1}                 (17-18)
-```
-
-### Dantzig-Wolfe Master (Equations 28-33)
-
-Uses patterns (subsets of items) as decision variables:
-
-- **P₀**: Patterns respecting aggregated capacity
-- **Pᵢ**: Patterns respecting knapsack i's capacity
-
-Key relationships:
-```
-tⱼ = Σₐ∈P₀ aⱼ · yₐ     (derive item selection)
-xᵢⱼ = Σₐ∈Pᵢ aⱼ · yₐ   (derive item assignment)
-```
-
-## Project Structure
-
-```
-src/main/java/ca/udem/gaillarz/
-├── model/
-│   ├── Item.java            # Item with weight and profit
-│   ├── Knapsack.java        # Knapsack with capacity
-│   └── MKPInstance.java     # Complete problem instance
-├── io/
-│   ├── InstanceReader.java       # Read/write instance files
-│   └── InvalidInstanceException.java
-├── formulation/
-│   ├── ClassicFormulation.java   # Classic MKP formulation
-│   ├── ClassicSolution.java      # Solution with x_ij variables
-│   ├── L2RelaxedFormulation.java # L2 formulation with t_j
-│   ├── L2Solution.java           # Solution with t_j and x_ij
-│   ├── Pattern.java              # Pattern (subset of items)
-│   ├── DantzigWolfeMaster.java   # DW master formulation
-│   ├── DWSolution.java           # Solution with y_a patterns
-│   └── FormulationException.java
-└── Main.java                     # Demo application
-```
-
-## Instance File Format
-
-```
-m                    # Number of knapsacks
-n                    # Number of items
-c₁                   # Capacity of knapsack 1
-c₂                   # Capacity of knapsack 2
-...
-cₘ                   # Capacity of knapsack m
-w₁   p₁              # Weight and profit of item 1
-w₂   p₂              # Weight and profit of item 2
-...
-wₙ   pₙ              # Weight and profit of item n
-```
-
-## Usage Examples
-
-### Reading an Instance
-
-```java
-MKPInstance instance = InstanceReader.readFromFile("instance.txt");
-System.out.println(instance.toDetailedString());
-```
-
-### Creating and Using Formulations
-
-```java
-// Create formulation hierarchy
-ClassicFormulation classic = new ClassicFormulation(instance);
-L2RelaxedFormulation l2 = classic.toL2Formulation();
-DantzigWolfeMaster dw = l2.toDantzigWolfeFormulation();
-
-// Display mathematical formulation
-System.out.println(classic.toMathematicalString());
-```
-
-### Working with Solutions
-
-```java
-// Create a classic solution
-ClassicSolution solution = new ClassicSolution(m, n);
-solution.assignItem(0, 0);  // Assign item 0 to knapsack 0
-solution.assignItem(1, 1);  // Assign item 1 to knapsack 1
-
-// Check feasibility and compute objective
-boolean feasible = classic.isFeasible(solution);
-double objective = classic.computeObjectiveValue(solution);
-
-// Convert to L2 solution
-L2Solution l2Solution = L2Solution.fromClassicSolution(solution, n);
-```
-
-### Working with Patterns (DW Formulation)
-
-```java
-// Create patterns
-Pattern p1 = Pattern.singleItem(0, instance);
-Pattern p2 = Pattern.fromItemIds(Set.of(0, 2, 4), instance);
-Pattern empty = Pattern.empty(n);
-
-// Add to DW master
-dw.addPatternP0(p1);
-dw.addPatternPI(0, p2);
-
-// Create DW solution
-Map<Pattern, Double> patternValues = new HashMap<>();
-patternValues.put(p1, 1.0);
-DWSolution dwSolution = new DWSolution(patternValues, n);
-
-// Convert DW → L2 → Classic
-L2Solution derived = dw.toL2Solution(dwSolution);
-if (derived.isInteger()) {
-    ClassicSolution classic = derived.toClassicSolution();
-}
-```
-
-## Building and Testing
-
+### Build & test
 ```bash
-# Compile
 mvn compile
-
-# Run tests
 mvn test
+```
 
-# Run main demo
+### Run the interactive demo
+The `Main` class presents several ways to explore the pipeline:
+1. Hardcoded toy example
+2. Random instance from a chosen resource directory
+3. All instances within a resource directory
+4. All discovered instances under `src/main/resources`
+
+Start the demo with:
+```bash
 mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.Main
 ```
 
-## Key Design Decisions
+When prompted, select an option. For file-based runs, the CLI lists available resource folders and picks files ending in `.txt` while ignoring `readme.txt`. 【F:src/main/java/ca/udem/gaillarz/Main.java†L21-L111】【F:src/main/java/ca/udem/gaillarz/Main.java†L158-L214】
 
-1. **Immutability**: Solution classes use defensive copying for arrays/collections
-2. **Tolerance**: Uses 1e-5 tolerance for floating-point comparisons
-3. **Validation**: Each formulation validates solution dimensions and constraints
-4. **Visualization**: Rich string representations for debugging and analysis
-
-## Conversion Relationships
-
+## Instance format
+Instance files follow the structure documented in `src/main/resources/readme.txt`:
 ```
-Classic ←→ L2 ←→ DW
-         ↑
-    (can convert back
-     to Classic if integer)
+# counts
+m            # number of knapsacks
+n            # number of items
+
+# capacities
+c1
+c2
+...
+cm
+
+# item data (weight profit)
+w1 p1
+w2 p2
+...
+wn pn
 ```
+【F:src/main/resources/readme.txt†L1-L8】
 
-- Classic → L2: Derives t_j from x_ij values
-- L2 → Classic: Only works if solution is integer
-- L2 → DW: Creates DW master with pattern pools
-- DW → L2: Derives t_j and x_ij from pattern values y_a
-
-## Next Steps
-
-This foundation supports future implementation of:
-
-1. **PatternGenerator** - Create initial patterns
-2. **Column Generation** - Solve DW master LP
-3. **Pricing Problems** - Generate new profitable patterns
-4. **Branch-and-Price** - Complete optimization algorithm
+## Column generation workflow
+1. Build the **classic** formulation, check feasibility, and derive an **L2** relaxation.
+2. Convert to the **Dantzig–Wolfe master** with initial patterns seeded by `PatternInitializer` (singleton and empty patterns).
+3. Run **column generation** using `ColumnGeneration` and `ORToolsSolver`, which iteratively solves the restricted master, extracts duals, prices new patterns, and adds them to the master until optimal or iteration limits are reached. 【F:src/main/java/ca/udem/gaillarz/formulation/PatternInitializer.java†L18-L96】【F:src/main/java/solver/ColumnGeneration.java†L19-L132】
+4. Visualize the final DW and derived L2/classic solutions through the demo output. 【F:src/main/java/ca/udem/gaillarz/Main.java†L67-L153】
 
 ## License
-
-Academic use for research purposes.
-
+Academic/research use only.
