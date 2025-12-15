@@ -1,15 +1,21 @@
 # Branch-and-Price Multiple Knapsack Toolkit
 
-Branch-and-price implementation for the Multiple Knapsack Problem (MKP). It provides classic and relaxed formulations, column generation, and a full branching loop backed by OR-Tools.
+Branch-and-price implementation for the Multiple Knapsack Problem (MKP). It provides classic and relaxed formulations,
+column generation, and a full branching loop backed by OR-Tools.
 
 ## What’s inside
+
 - **Model & IO**: `model/` holds `Item`, `Knapsack`, `MKPInstance`; `io/` parses and validates instance files.
-- **Formulations**: Classic and L2 relaxations, Dantzig–Wolfe master, pattern initialization/generation, and conversion utilities in `formulation/`.
-- **Solvers**: Lightweight LP wrapper (`solver/lp`), column generation (`solver/cg`), branch-and-price driver with no-good cuts (`solver/bp`), and VSBPP SAT checker for fractional assignments (`solver/vsbpp`).
-- **CLI demo**: `Main` stitches everything together; pick instances, run the solver, and inspect solutions from the console.
+- **Formulations**: Classic and L2 relaxations, Dantzig–Wolfe master, pattern initialization/generation, and conversion
+  utilities in `formulation/`.
+- **Solvers**: Lightweight LP wrapper (`solver/lp`), column generation (`solver/cg`), branch-and-price driver with
+  no-good cuts (`solver/bp`), and VSBPP SAT checker for fractional assignments (`solver/vsbpp`).
+- **CLI demo**: `Main` stitches everything together; pick instances, run the solver, and inspect solutions from the
+  console.
 - **Tests**: JUnit 5 coverage for formulations, column generation, and the solver glue in `src/test/java`.
 
 Project structure (key paths):
+
 - `src/main/java/ca/udem/gaillarz/model/` – MKP data classes.
 - `src/main/java/ca/udem/gaillarz/io/` – Instance reader/validator.
 - `src/main/java/ca/udem/gaillarz/formulation/` – Classic/L2/DW formulations, patterns, conversions.
@@ -18,11 +24,13 @@ Project structure (key paths):
 - `src/test/java/` – Unit tests.
 
 ## Prerequisites
+
 - Java 25
 - Maven 3.9+
 - Internet access for Maven to download OR-Tools (`com.google.ortools:ortools-java`).
 
 ## Build, test, run
+
 ```bash
 # compile
 mvn compile
@@ -35,7 +43,9 @@ mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.Main
 ```
 
 ## CLI usage
+
 When the CLI starts you can:
+
 - `1` Solve a hardcoded toy instance.
 - `2` Pick one instance file from a chosen resources subdirectory.
 - `3` Solve all instances in a chosen resources subdirectory (prints a summary at the end).
@@ -44,31 +54,54 @@ When the CLI starts you can:
 - `v` Toggle verbose logging on/off (persists across runs within the session).
 - `0` Exit.
 
+### Benchmark runner
+
+Batch benchmark all provided instance sets (SMALL, FK_1..FK_4) with default limits and emit CSV/JSON summaries under
+`benchmark_results/`:
+
+```bash
+mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.benchmark.MainBenchmarkQuick
+```
 
 ## Instance format
+
 Located under `src/main/resources/`. Each `.txt` file follows:
+
 ```
 m            # number of knapsacks
 n            # number of items
 c1..cm       # knapsack capacities (one per line)
 w p          # weight/profit for each item (n lines)
 ```
+
 See `src/main/resources/readme.txt` for the exact layout.
 
 ## Implementation notes
-- **Column generation**: Builds a restricted master LP from the DW master, extracts duals, solves knapsack-based pricing, and iterates until optimality or limits (`CGParameters`).
-- **Branch-and-price**: Manages nodes with bounds/pruning, applies branching filters, re-runs column generation per node, and uses a SAT-based checker to repair fractional assignments.
-- **Outputs**: `BPResult` reports status, objective, best bound, gap, node counts, and runtime; solutions can be rendered in classic form for readability.
+
+- **Column generation**: Builds a restricted master LP from the DW master, extracts duals, solves knapsack-based
+  pricing, and iterates until optimality or limits (`CGParameters`).
+- **Branch-and-price**: Manages nodes with bounds/pruning, applies branching filters, re-runs column generation per
+  node, and uses a SAT-based checker to repair fractional assignments.
+- **Outputs**: `BPResult` reports status, objective, best bound, gap, node counts, and runtime; solutions can be
+  rendered in classic form for readability.
 
 ### Flow and key classes
-- **DW master build**: `L2RelaxedFormulation.toDantzigWolfeFormulation()` constructs the master; `PatternInitializer` seeds singleton/empty patterns; `DWMasterLPBuilder` turns the DW model into a restricted LP.
-- **Restricted master solve**: `ColumnGeneration` calls the LP solver (default `ORToolsSolver`), reads duals, and invokes `PricingProblem` (knapsack subproblem) to inject profitable patterns; terminates on optimality, iteration limit, or no improving column.
-- **Branching**: `BranchAndPrice` runs a best-first search over `BranchNode`s ordered by upper bound. `BranchingRule`/`BranchingStrategy` decide which item/bin to fix, rebuild a node-specific master, and re-enter column generation.
+
+- **DW master build**: `L2RelaxedFormulation.toDantzigWolfeFormulation()` constructs the master; `PatternInitializer`
+  seeds singleton/empty patterns; `DWMasterLPBuilder` turns the DW model into a restricted LP.
+- **Restricted master solve**: `ColumnGeneration` calls the LP solver (default `ORToolsSolver`), reads duals, and
+  invokes `PricingProblem` (knapsack subproblem) to inject profitable patterns; terminates on optimality, iteration
+  limit, or no improving column.
+- **Branching**: `BranchAndPrice` runs a best-first search over `BranchNode`s ordered by upper bound. `BranchingRule`/
+  `BranchingStrategy` decide which item/bin to fix, rebuild a node-specific master, and re-enter column generation.
 - **No-good cuts**: `NoGoodCutManager` tracks excluded patterns to avoid regenerating dominated branches.
-- **Fractional repair**: When item selections are integral but assignments are fractional, `OrToolsCpSatVSBPPSATChecker` solves a SAT/CP feasibility fix before further branching.
-- **Statistics & summaries**: Each `BPResult` retains LB/UB, gap, runtime, and node counts; CLI batch runs print aggregate success/failure/optimality plus per-instance objective, gap, and time.
+- **Fractional repair**: When item selections are integral but assignments are fractional, `OrToolsCpSatVSBPPSATChecker`
+  solves a SAT/CP feasibility fix before further branching.
+- **Statistics & summaries**: Each `BPResult` retains LB/UB, gap, runtime, and node counts; CLI batch runs print
+  aggregate success/failure/optimality plus per-instance objective, gap, and time.
 
 ## Contributing & troubleshooting
+
 - Ensure Java 25 is on your `PATH` (`java -version`).
 - If OR-Tools native libs fail to load, rerun Maven with a clean local repo or check platform compatibility.
 - Add new instances under `src/main/resources/<folder>/` with `.txt` extension.

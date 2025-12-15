@@ -198,7 +198,7 @@ public class DWSolution {
         List<Map.Entry<PatternVariable, Double>> activeList = patternValues.entrySet().stream()
                 .filter(e -> Math.abs(e.getValue()) > TOLERANCE)
                 .sorted(Comparator.comparing(e -> e.getKey().toString()))
-                .collect(Collectors.toList());
+                .toList();
 
         int count = 0;
         for (Map.Entry<PatternVariable, Double> entry : activeList) {

@@ -6,7 +6,10 @@ import ca.udem.gaillarz.model.MKPInstance;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -263,7 +266,7 @@ class DantzigWolfeMasterTest {
         DWSolution dwSolution = new DWSolution(patternValues, 5);
 
         assertThrows(FormulationException.class, () ->
-            dwMaster.toClassicSolution(dwSolution));
+                dwMaster.toClassicSolution(dwSolution));
     }
 
     @Test

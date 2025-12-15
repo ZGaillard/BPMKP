@@ -1,7 +1,6 @@
 package ca.udem.gaillarz.solver.vsbpp;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -17,7 +16,7 @@ public record VSBPPSATResult(VSBPPSATStatus status, Set<Integer> selectedItems, 
                           double solveTimeMs,
                           String message) {
         this.status = status;
-        this.selectedItems = selectedItems == null ? Collections.emptySet() : Collections.unmodifiableSet(new HashSet<>(selectedItems));
+        this.selectedItems = selectedItems == null ? Collections.emptySet() : Set.copyOf(selectedItems);
         this.itemToBin = itemToBin == null ? null : itemToBin.clone();
         this.solveTimeMs = solveTimeMs;
         this.message = message;

@@ -6,7 +6,10 @@ import ca.udem.gaillarz.model.MKPInstance;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -199,8 +202,8 @@ class FormulationConversionTest {
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 5; j++) {
                 assertEquals(original.isItemInKnapsack(i, j),
-                           recovered.isItemInKnapsack(i, j),
-                           String.format("Mismatch at i=%d, j=%d", i, j));
+                        recovered.isItemInKnapsack(i, j),
+                        String.format("Mismatch at i=%d, j=%d", i, j));
             }
         }
 

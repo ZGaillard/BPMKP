@@ -3,10 +3,10 @@ package ca.udem.gaillarz.formulation;
 import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
-import org.junit.jupiter.api.Test;
 import ca.udem.gaillarz.solver.lp.LPSolution;
 import ca.udem.gaillarz.solver.lp.ORToolsSolver;
 import ca.udem.gaillarz.solver.lp.SolutionStatus;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 

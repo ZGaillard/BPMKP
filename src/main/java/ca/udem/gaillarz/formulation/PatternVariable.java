@@ -26,6 +26,7 @@ public class PatternVariable {
     private final Pattern pattern;
     private final PoolType poolType;
     private final int poolIndex;  // For PI: knapsack index (0 to m-1)
+
     /**
      * Private constructor - use factory methods.
      */

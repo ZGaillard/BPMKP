@@ -35,6 +35,11 @@ public class ColumnGeneration {
         this.totalTimeMs = 0L;
     }
 
+    public ColumnGeneration setBranchingConstraints(Set<Integer> forbiddenItems, Set<Integer> requiredItems) {
+        this.pricingProblem.setBranchingConstraints(forbiddenItems, requiredItems);
+        return this;
+    }
+
     public CGResult solve() {
         return solve(new CGParameters());
     }
@@ -86,6 +91,10 @@ public class ColumnGeneration {
 
             // 2) Extract dual values
             DualValues dualValues = builder.extractDualValues(lpSolution, lp);
+
+            if (master instanceof BranchAndPrice.DantzigWolfeFormulationWithPatterns bm) {
+                pricingProblem.setBranchingConstraints(bm.getForbiddenItems(), bm.getRequiredItems());
+            }
 
             // 3) Pricing
             List<PricingResult> improving = pricingProblem.solveAll(dualValues);
@@ -218,12 +227,6 @@ public class ColumnGeneration {
     private void logPricing(List<PricingResult> improving) {
         if (improving.isEmpty()) {
             System.out.println("[CG] Pricing found no positive reduced-cost columns.");
-            return;
-        }
-        System.out.println("[CG] Pricing candidates:");
-        for (PricingResult pr : improving) {
-            String pool = pr.p0() ? "P0" : "P" + (pr.poolIndex() + 1);
-            System.out.printf("      %-3s rc=%8.4f items=%s%n", pool, pr.reducedCost(), pr.pattern().getItemIds());
         }
     }
 }

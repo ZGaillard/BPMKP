@@ -14,7 +14,9 @@ import ca.udem.gaillarz.solver.vsbpp.VSBPPSATResult;
 import ca.udem.gaillarz.solver.vsbpp.VSBPPSATStatus;
 
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 /**
  * Branch-and-Price driver combining column generation and branching.
@@ -130,6 +132,7 @@ public class BranchAndPrice {
                 nodesPruned++;
                 node.setStatus(NodeStatus.PRUNED);
                 if (verbose) System.out.println("[BAP] Prune by bound (UB <= global LB).");
+                updateGlobalUpperBound(queue, Double.NaN);
                 continue;
             }
 
@@ -142,6 +145,7 @@ public class BranchAndPrice {
             }
 
             ColumnGeneration cg = new ColumnGeneration(nodeMaster, lpSolver);
+            cg.setBranchingConstraints(node.getForbiddenItems(), node.getRequiredItems());
             CGParameters cgParams = new CGParameters().setVerbose(verbose);
             CGResult cgResult = cg.solve(cgParams);
 
@@ -149,6 +153,7 @@ public class BranchAndPrice {
                 nodesInfeasible++;
                 node.setStatus(NodeStatus.INFEASIBLE);
                 if (verbose) System.out.println("[BAP] Node not optimal by CG (" + cgResult.status() + ").");
+                updateGlobalUpperBound(queue, Double.NaN);
                 continue;
             }
 
@@ -156,7 +161,7 @@ public class BranchAndPrice {
             node.setUpperBound(nodeUB);
             node.setSolution(cgResult.l2Solution(), cgResult.dwSolution(), cgResult.dualValues());
             node.setStatus(NodeStatus.SOLVED);
-            globalUB = Math.min(globalUB, nodeUB);
+            updateGlobalUpperBound(queue, nodeUB);
 
             if (verbose) {
                 System.out.printf("[BAP] Node UB=%.2f, global LB=%.2f, gap=%.2f%%%n",
@@ -167,6 +172,7 @@ public class BranchAndPrice {
                 nodesPruned++;
                 node.setStatus(NodeStatus.PRUNED);
                 if (verbose) System.out.println("[BAP] Pruning after CG (UB <= global LB).");
+                updateGlobalUpperBound(queue, Double.NaN);
                 continue;
             }
 
@@ -175,6 +181,7 @@ public class BranchAndPrice {
                 nodesInfeasible++;
                 node.setStatus(NodeStatus.INFEASIBLE);
                 if (verbose) System.out.println("[BAP] No L2 solution returned; treating node as infeasible.");
+                updateGlobalUpperBound(queue, Double.NaN);
                 continue;
             }
 
@@ -198,6 +205,7 @@ public class BranchAndPrice {
                         }
                     }
                     node.setStatus(NodeStatus.INTEGER);
+                    updateGlobalUpperBound(queue, Double.NaN);
                     continue;
                 } catch (Exception ex) {
                     nodesInfeasible++;
@@ -205,6 +213,7 @@ public class BranchAndPrice {
                     if (verbose) {
                         System.out.println("[BAP] Integer-looking L2 solution failed conversion: " + ex.getMessage());
                     }
+                    updateGlobalUpperBound(queue, Double.NaN);
                 }
             }
 
@@ -215,7 +224,7 @@ public class BranchAndPrice {
                     integralNodes++;
                     ClassicSolution classicSol = new ClassicSolution(instance.getNumKnapsacks(), instance.getNumItems());
                     int[] map = feas.itemToBin();
-                    for (int j = 0; j < map.length; j++) {
+                    for (int j = 0; j < (map != null ? map.length : 0); j++) {
                         if (map[j] >= 0) {
                             classicSol.assignItem(map[j], j);
                         }
@@ -232,6 +241,7 @@ public class BranchAndPrice {
                         }
                     }
                     node.setStatus(NodeStatus.INTEGER);
+                    updateGlobalUpperBound(queue, Double.NaN);
                     continue;
                 } else if (feas.status() == VSBPPSATStatus.INFEASIBLE) {
                     cutManager.addInfeasibleSet(feas.selectedItems());
@@ -240,6 +250,17 @@ public class BranchAndPrice {
                     }
                     queue.add(node); // reprocess with cuts
                     node.setStatus(NodeStatus.OPEN);
+                    updateGlobalUpperBound(queue, node.getUpperBound());
+                    continue;
+                } else {
+                    // Unknown/error/time-limit from SAT: add a no-good cut on the current selection to force a different assignment
+                    cutManager.addInfeasibleSet(selectedItemsFrom(l2Sol));
+                    if (verbose) {
+                        System.out.println("[BAP] VSBPP returned " + feas.status() + "; adding cut on current selection and retrying node.");
+                    }
+                    queue.add(node);
+                    node.setStatus(NodeStatus.OPEN);
+                    updateGlobalUpperBound(queue, node.getUpperBound());
                     continue;
                 }
             }
@@ -248,7 +269,14 @@ public class BranchAndPrice {
             BranchingRule branchingRule = new BranchingRule(instance.getNumItems());
             int branchItem = branchingRule.selectBranchItem(l2Sol, node);
             if (branchItem < 0) {
-                if (verbose) System.out.println("[BAP] No fractional variable to branch on; skipping node.");
+                if (verbose) {
+                    System.out.println("[BAP] No fractional variable to branch on; skipping node.");
+                    String fractional = l2Sol.firstFractionalVariable();
+                    if (fractional != null) {
+                        System.out.println("[BAP] First fractional variable: " + fractional);
+                    }
+                }
+                updateGlobalUpperBound(queue, Double.NaN);
                 continue;
             }
 
@@ -261,6 +289,8 @@ public class BranchAndPrice {
                         branchItem, l2Sol.getItemSelection(branchItem),
                         children[0].getNodeId(), children[1].getNodeId());
             }
+
+            updateGlobalUpperBound(queue, queue.peek() != null ? queue.peek().getUpperBound() : nodeUB);
         }
 
         long totalTime = System.currentTimeMillis() - startTime;
@@ -295,8 +325,37 @@ public class BranchAndPrice {
     }
 
     private double computeGap() {
-        if (!Double.isFinite(globalUB) || globalUB == 0.0) return 1.0;
-        return Math.max(0.0, (globalUB - globalLB) / Math.abs(globalUB));
+        if (!Double.isFinite(globalUB) || globalUB <= 0.0) return 1.0;
+        if (globalLB <= 0.0) return 1.0;
+        double gap = (globalUB - globalLB) / Math.abs(globalUB);
+        return Math.max(0.0, gap);
+    }
+
+    private Set<Integer> selectedItemsFrom(L2Solution l2Sol) {
+        Set<Integer> selected = new HashSet<>();
+        for (int j = 0; j < l2Sol.getNumItems(); j++) {
+            if (l2Sol.getItemSelection(j) > 0.5) {
+                selected.add(j);
+            }
+        }
+        return selected;
+    }
+
+    private void updateGlobalUpperBound(PriorityQueue<BranchNode> queue, double candidateUB) {
+        double best = Double.NEGATIVE_INFINITY;
+        if (Double.isFinite(candidateUB)) {
+            best = candidateUB;
+        }
+        BranchNode peek = queue.peek();
+        if (peek != null && Double.isFinite(peek.getUpperBound())) {
+            best = Math.max(best, peek.getUpperBound());
+        }
+        if (best == Double.NEGATIVE_INFINITY) {
+            // No open nodes; align UB with LB if we have a feasible solution
+            globalUB = bestSolution != null ? globalLB : globalUB;
+        } else {
+            globalUB = best;
+        }
     }
 
     private BPStatus determineStatus() {
@@ -316,14 +375,14 @@ public class BranchAndPrice {
      */
     public static class DantzigWolfeFormulationWithPatterns extends DantzigWolfeMaster implements SupportsNoGoodCuts {
         private final NoGoodCutManager cutManager;
-        private final java.util.Set<Integer> requiredItems;
-        private final java.util.Set<Integer> forbiddenItems;
+        private final Set<Integer> requiredItems;
+        private final Set<Integer> forbiddenItems;
 
         DantzigWolfeFormulationWithPatterns(BranchNode node, DantzigWolfeMaster source, L2RelaxedFormulation l2, NoGoodCutManager cutManager) {
             super(l2);
             this.cutManager = cutManager;
-            this.requiredItems = java.util.Set.copyOf(node.getRequiredItems());
-            this.forbiddenItems = java.util.Set.copyOf(node.getForbiddenItems());
+            this.requiredItems = Set.copyOf(node.getRequiredItems());
+            this.forbiddenItems = Set.copyOf(node.getForbiddenItems());
 
             // P0
             for (Pattern p : source.getPatternsP0()) {
@@ -341,7 +400,7 @@ public class BranchAndPrice {
             }
         }
 
-        private boolean isCompatible(Pattern p, java.util.Set<Integer> required, java.util.Set<Integer> forbidden, boolean checkRequired) {
+        private boolean isCompatible(Pattern p, Set<Integer> required, Set<Integer> forbidden, boolean checkRequired) {
             for (int item : forbidden) {
                 if (p.containsItem(item)) return false;
             }
@@ -358,11 +417,11 @@ public class BranchAndPrice {
             return cutManager;
         }
 
-        public java.util.Set<Integer> getRequiredItems() {
+        public Set<Integer> getRequiredItems() {
             return requiredItems;
         }
 
-        public java.util.Set<Integer> getForbiddenItems() {
+        public Set<Integer> getForbiddenItems() {
             return forbiddenItems;
         }
     }

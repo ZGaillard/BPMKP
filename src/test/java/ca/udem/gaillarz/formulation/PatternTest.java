@@ -209,20 +209,20 @@ class PatternTest {
         itemIds.add(10);  // Invalid item ID
 
         assertThrows(IllegalArgumentException.class, () ->
-            Pattern.fromItemIds(itemIds, instance));
+                Pattern.fromItemIds(itemIds, instance));
     }
 
     @Test
     void testNullItems() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Pattern(null, instance));
+                new Pattern(null, instance));
     }
 
     @Test
     void testNullInstance() {
         boolean[] items = {true, false, true, false, true};
         assertThrows(IllegalArgumentException.class, () ->
-            new Pattern(items, null));
+                new Pattern(items, null));
     }
 
     @Test
@@ -230,6 +230,6 @@ class PatternTest {
         boolean[] items = {true, false, true};  // Wrong length
 
         assertThrows(IllegalArgumentException.class, () ->
-            new Pattern(items, instance));
+                new Pattern(items, instance));
     }
 }

@@ -136,7 +136,7 @@ class ClassicFormulationTest {
         ClassicSolution wrongSolution = new ClassicSolution(3, 5);  // Wrong number of knapsacks
 
         assertThrows(FormulationException.class, () ->
-            formulation.computeObjectiveValue(wrongSolution));
+                formulation.computeObjectiveValue(wrongSolution));
     }
 
     @Test

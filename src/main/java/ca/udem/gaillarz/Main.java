@@ -5,6 +5,7 @@ import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
 import ca.udem.gaillarz.solver.bp.BPResult;
+import ca.udem.gaillarz.solver.bp.BPStatus;
 import ca.udem.gaillarz.solver.bp.BranchAndPrice;
 
 import java.io.IOException;
@@ -72,7 +73,7 @@ public class Main {
 
     private static void solveExample(boolean verbose) throws InvalidInstanceException {
         MKPInstance instance = buildExampleInstance();
-        runBP(instance, "Example", verbose);
+        runBP(instance, "Example", verbose, true);
     }
 
     private static void pickAndSolveSingle(Scanner scanner, Path root, boolean verbose) throws IOException {
@@ -95,7 +96,7 @@ public class Main {
             }
         } catch (NumberFormatException ignored) {
         }
-        runFromFile(files.get(idx), verbose);
+        runFromFile(files.get(idx), verbose, true);
     }
 
     private static void solveAllInDirectory(Scanner scanner, Path root, boolean verbose) throws IOException {
@@ -106,8 +107,26 @@ public class Main {
             return;
         }
         List<RunSummary> runs = new ArrayList<>();
-        for (Path p : files) {
-            runs.add(runFromFile(p, verbose));
+        int total = files.size();
+        int optimal = 0;
+        int gapLimit = 0;
+        int infeasible = 0;
+        for (int i = 0; i < total; i++) {
+            Path p = files.get(i);
+            System.out.printf("[%d/%d] Running %s...%n", i + 1, total, dir.relativize(p));
+            RunSummary summary = runFromFile(p, verbose, false);
+            runs.add(summary);
+            if (summary.result() != null) {
+                BPResult r = summary.result();
+                if (r.status() == BPStatus.OPTIMAL) optimal++;
+                if (r.status() == BPStatus.GAP_LIMIT) gapLimit++;
+                if (r.status() == BPStatus.INFEASIBLE) infeasible++;
+                System.out.printf("    -> %s obj=%.3f gap=%.2f%% time=%.2fs%n",
+                        r.status(), r.objectiveValue(), r.gap() * 100.0, r.solveTimeMs() / 1000.0);
+            } else {
+                System.out.printf("    -> FAILED (%s)%n", summary.error());
+            }
+            System.out.printf("    Progress: optimal=%d, gap_limit=%d, infeasible=%d%n", optimal, gapLimit, infeasible);
         }
         printRunSummary(runs, dir);
     }
@@ -121,7 +140,7 @@ public class Main {
         }
         Path chosen = files.get(ThreadLocalRandom.current().nextInt(files.size()));
         System.out.println("Randomly selected: " + chosen);
-        runFromFile(chosen, verbose);
+        runFromFile(chosen, verbose, true);
     }
 
     private static void solveAllInResources(Path root, boolean verbose) throws IOException {
@@ -131,18 +150,36 @@ public class Main {
             return;
         }
         List<RunSummary> runs = new ArrayList<>();
-        for (Path p : files) {
-            runs.add(runFromFile(p, verbose));
+        int total = files.size();
+        int optimal = 0;
+        int gapLimit = 0;
+        int infeasible = 0;
+        for (int i = 0; i < total; i++) {
+            Path p = files.get(i);
+            System.out.printf("[%d/%d] Running %s...%n", i + 1, total, root.relativize(p));
+            RunSummary summary = runFromFile(p, verbose, false);
+            runs.add(summary);
+            if (summary.result() != null) {
+                BPResult r = summary.result();
+                if (r.status() == BPStatus.OPTIMAL) optimal++;
+                if (r.status() == BPStatus.GAP_LIMIT) gapLimit++;
+                if (r.status() == BPStatus.INFEASIBLE) infeasible++;
+                System.out.printf("    -> %s obj=%.3f gap=%.2f%% time=%.2fs%n",
+                        r.status(), r.objectiveValue(), r.gap() * 100.0, r.solveTimeMs() / 1000.0);
+            } else {
+                System.out.printf("    -> FAILED (%s)%n", summary.error());
+            }
+            System.out.printf("    Progress: optimal=%d, gap_limit=%d, infeasible=%d%n", optimal, gapLimit, infeasible);
         }
         printRunSummary(runs, root);
     }
 
     // ========== Helpers ==========
 
-    private static RunSummary runFromFile(Path file, boolean verbose) {
+    private static RunSummary runFromFile(Path file, boolean verbose, boolean printSolution) {
         try {
             MKPInstance instance = InstanceReader.readFromFile(file.toString());
-            BPResult res = runBP(instance, file.toString(), verbose);
+            BPResult res = runBP(instance, file.toString(), verbose, printSolution);
             return new RunSummary(file, res, null);
         } catch (Exception e) {
             System.out.println("Failed to solve " + file + ": " + e.getMessage());
@@ -150,7 +187,7 @@ public class Main {
         }
     }
 
-    private static BPResult runBP(MKPInstance instance, String label, boolean verbose) {
+    private static BPResult runBP(MKPInstance instance, String label, boolean verbose, boolean printSolution) {
         System.out.printf("%n--- Solving %s ---%n", label);
         BranchAndPrice solver = new BranchAndPrice(instance)
                 .setVerbose(verbose)
@@ -160,7 +197,7 @@ public class Main {
         BPResult result = solver.solve();
 
         System.out.println("Result: " + result);
-        if (result.hasSolution()) {
+        if (printSolution && result.hasSolution()) {
             ClassicSolution sol = result.solution();
             System.out.println(sol.toDetailedString(instance));
         }

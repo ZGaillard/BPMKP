@@ -7,7 +7,8 @@ import java.util.Arrays;
  * Contains both t_j (item selection) and x_ij (assignment) variables.
  */
 public class L2Solution {
-    private static final double TOLERANCE = 1e-5;
+    private static final double SELECTION_TOLERANCE = 1e-5;
+    private static final double INTEGER_TOLERANCE = 1e-6;
 
     private final double[] t;     // Item selection variables (t_j)
     private final double[][] x;   // Assignment variables (x_ij)
@@ -69,7 +70,7 @@ public class L2Solution {
         // t_j = 1 if item j is assigned to any knapsack
         for (int j = 0; j < numItems; j++) {
             for (int i = 0; i < m; i++) {
-                if (x[i][j] > TOLERANCE) {
+                if (x[i][j] > SELECTION_TOLERANCE) {
                     t[j] = 1.0;
                     break;
                 }
@@ -96,7 +97,7 @@ public class L2Solution {
      * @return true if t_j is approximately 1
      */
     public boolean isItemSelected(int itemId) {
-        return Math.abs(t[itemId] - 1.0) < TOLERANCE;
+        return Math.abs(t[itemId] - 1.0) < SELECTION_TOLERANCE;
     }
 
     /**
@@ -128,7 +129,7 @@ public class L2Solution {
      * @return true if x_ij is approximately 1
      */
     public boolean isItemInKnapsack(int knapsackId, int itemId) {
-        return Math.abs(x[knapsackId][itemId] - 1.0) < TOLERANCE;
+        return Math.abs(x[knapsackId][itemId] - 1.0) < SELECTION_TOLERANCE;
     }
 
     /**
@@ -248,7 +249,28 @@ public class L2Solution {
     }
 
     private boolean isInteger(double value) {
-        return Math.abs(value - Math.round(value)) < TOLERANCE;
+        return Math.abs(value - Math.round(value)) < INTEGER_TOLERANCE;
+    }
+
+    /**
+     * @return description of the first fractional variable, or null if all are integral.
+     */
+    public String firstFractionalVariable() {
+        for (int j = 0; j < numItems; j++) {
+            double tj = t[j];
+            if (!isInteger(tj)) {
+                return String.format("t_%d = %.6f", j, tj);
+            }
+        }
+        for (int i = 0; i < numKnapsacks; i++) {
+            for (int j = 0; j < numItems; j++) {
+                double xij = x[i][j];
+                if (!isInteger(xij)) {
+                    return String.format("x_%d_%d = %.6f", i, j, xij);
+                }
+            }
+        }
+        return null;
     }
 
     @Override

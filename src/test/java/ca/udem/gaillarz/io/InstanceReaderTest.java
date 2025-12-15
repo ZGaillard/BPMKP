@@ -7,7 +7,8 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests for InstanceReader.
@@ -113,7 +114,7 @@ class InstanceReaderTest {
                 """;
 
         assertThrows(InvalidInstanceException.class, () ->
-            InstanceReader.parseFromString(content));
+                InstanceReader.parseFromString(content));
     }
 
     @Test
@@ -126,7 +127,7 @@ class InstanceReaderTest {
                 """;
 
         assertThrows(InvalidInstanceException.class, () ->
-            InstanceReader.parseFromString(content));
+                InstanceReader.parseFromString(content));
     }
 
     @Test
@@ -140,7 +141,7 @@ class InstanceReaderTest {
                 """;
 
         assertThrows(InvalidInstanceException.class, () ->
-            InstanceReader.parseFromString(content));
+                InstanceReader.parseFromString(content));
     }
 
     @Test

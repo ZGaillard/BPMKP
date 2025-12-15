@@ -71,6 +71,8 @@ public class OrToolsCpSatVSBPPSATChecker implements VSBPPSATChecker {
             if (timeLimitMs > 0) {
                 solver.getParameters().setMaxTimeInSeconds(timeLimitMs / 1000.0);
             }
+            // single-threaded to avoid rare propagation trail crashes
+            solver.getParameters().setNumSearchWorkers(1);
 
             CpSolverStatus status = solver.solve(model);
             double elapsed = System.currentTimeMillis() - start;

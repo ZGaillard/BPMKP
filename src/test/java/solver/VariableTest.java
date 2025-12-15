@@ -4,8 +4,7 @@ import ca.udem.gaillarz.solver.lp.Variable;
 import ca.udem.gaillarz.solver.lp.VariableType;
 import org.junit.jupiter.api.Test;
 
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class VariableTest {
 

@@ -2,13 +2,15 @@ package ca.udem.gaillarz.solver.cg;
 
 import ca.udem.gaillarz.formulation.DualValues;
 import ca.udem.gaillarz.formulation.Pattern;
+import ca.udem.gaillarz.model.Item;
 import ca.udem.gaillarz.model.MKPInstance;
 import ca.udem.gaillarz.solver.knapsack.KnapsackResult;
 import ca.udem.gaillarz.solver.knapsack.KnapsackSolver;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Pricing subproblems for column generation.
@@ -19,9 +21,16 @@ public class PricingProblem {
     private static final double TOLERANCE = 1e-6;
 
     private final MKPInstance instance;
+    private Set<Integer> forbiddenItems = Set.of();
+    private Set<Integer> requiredItems = Set.of();
 
     public PricingProblem(MKPInstance instance) {
         this.instance = instance;
+    }
+
+    public void setBranchingConstraints(Set<Integer> forbidden, Set<Integer> required) {
+        this.forbiddenItems = new HashSet<>(forbidden);
+        this.requiredItems = new HashSet<>(required);
     }
 
     /**
@@ -38,17 +47,43 @@ public class PricingProblem {
         double pi0 = dualValues.pi()[0];
         double tau = dualValues.tau();
 
-        double[] modifiedProfits = new double[n];
-        for (int j = 0; j < n; j++) {
-            modifiedProfits[j] = instance.getItem(j).profit() * (1.0 - tau) - mu[j];
+        double baseProfit = 0.0;
+        int requiredWeight = 0;
+        for (int req : requiredItems) {
+            if (forbiddenItems.contains(req)) {
+                return null; // inconsistent branching
+            }
+            requiredWeight += instance.getItem(req).weight();
+            if (requiredWeight > instance.getTotalCapacity()) {
+                return null; // infeasible given required items
+            }
+            baseProfit += instance.getItem(req).profit() * (1.0 - tau) - mu[req];
         }
 
-        KnapsackSolver solver = new KnapsackSolver(instance.getItems(), instance.getTotalCapacity(), modifiedProfits);
+        int remainingCapacity = instance.getTotalCapacity() - requiredWeight;
+        if (remainingCapacity < 0) {
+            return null;
+        }
+
+        List<Double> modifiedProfits = new ArrayList<>();
+        List<Item> allowedItems = new ArrayList<>();
+        for (int j = 0; j < n; j++) {
+            if (forbiddenItems.contains(j) || requiredItems.contains(j)) {
+                continue;
+            }
+            allowedItems.add(instance.getItem(j));
+            modifiedProfits.add(instance.getItem(j).profit() * (1.0 - tau) - mu[j]);
+        }
+
+        KnapsackSolver solver = new KnapsackSolver(allowedItems, remainingCapacity, toArray(modifiedProfits));
         KnapsackResult result = solver.solve();
 
-        double reducedCost = result.getOptimalProfit() - pi0;
+        Set<Integer> chosen = new HashSet<>(result.getSelectedItemIds());
+        chosen.addAll(requiredItems);
+
+        double reducedCost = baseProfit + result.getOptimalProfit() - pi0;
         if (reducedCost > TOLERANCE) {
-            Pattern pattern = Pattern.fromItemIds(result.getSelectedItemIds(), instance);
+            Pattern pattern = Pattern.fromItemIds(chosen, instance);
             return new PricingResult(pattern, reducedCost, 0, true);
         }
         return null;
@@ -68,12 +103,20 @@ public class PricingProblem {
         double[] mu = dualValues.mu();
         double pi = dualValues.pi()[knapsackId + 1];
 
-        double[] modifiedProfits = Arrays.copyOf(mu, n);
+        List<Item> allowedItems = new ArrayList<>();
+        List<Double> modifiedProfits = new ArrayList<>();
+        for (int j = 0; j < n; j++) {
+            if (forbiddenItems.contains(j)) {
+                continue;
+            }
+            allowedItems.add(instance.getItem(j));
+            modifiedProfits.add(mu[j]);
+        }
 
         KnapsackSolver solver = new KnapsackSolver(
-                instance.getItems(),
+                allowedItems,
                 instance.getKnapsack(knapsackId).capacity(),
-                modifiedProfits
+                toArray(modifiedProfits)
         );
         KnapsackResult result = solver.solve();
 
@@ -107,5 +150,13 @@ public class PricingProblem {
         }
 
         return results;
+    }
+
+    private double[] toArray(List<Double> values) {
+        double[] arr = new double[values.size()];
+        for (int i = 0; i < values.size(); i++) {
+            arr[i] = values.get(i);
+        }
+        return arr;
     }
 }

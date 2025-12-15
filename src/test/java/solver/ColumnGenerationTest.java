@@ -1,6 +1,8 @@
 package solver;
 
-import ca.udem.gaillarz.formulation.*;
+import ca.udem.gaillarz.formulation.DantzigWolfeMaster;
+import ca.udem.gaillarz.formulation.L2RelaxedFormulation;
+import ca.udem.gaillarz.formulation.PatternInitializer;
 import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
@@ -13,7 +15,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ColumnGenerationTest {
 
@@ -51,7 +54,7 @@ class ColumnGenerationTest {
                 || result.status() == CGStatus.ITERATION_LIMIT
                 || result.status() == CGStatus.TIME_LIMIT);
         assertTrue(result.iterations() > 0);
-        assertTrue(!result.objectiveHistory().isEmpty());
+        assertFalse(result.objectiveHistory().isEmpty());
 
         // Objective history should be non-decreasing (within tolerance)
         List<Double> history = result.objectiveHistory();

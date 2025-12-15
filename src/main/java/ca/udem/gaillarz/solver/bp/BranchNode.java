@@ -58,6 +58,12 @@ public class BranchNode {
         this.parent = parent;
         this.depth = parent.depth + 1;
         this.fixedItems = new HashMap<>(parent.fixedItems);
+        if (this.fixedItems.containsKey(itemId)) {
+            int existing = this.fixedItems.get(itemId);
+            if (existing != value) {
+                throw new IllegalStateException("Item " + itemId + " already fixed to " + existing + "; cannot fix to " + value);
+            }
+        }
         this.fixedItems.put(itemId, value);
         this.upperBound = parent.upperBound;
         this.lowerBound = parent.lowerBound;
