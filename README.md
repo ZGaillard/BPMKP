@@ -1,73 +1,74 @@
 # Branch-and-Price Multiple Knapsack Toolkit
 
-This repository implements a full formulation hierarchy and column-generation loop for the Multiple Knapsack Problem (MKP). It includes classic and relaxed formulations, Dantzig–Wolfe master construction, pattern generation, and a runnable demo that stitches everything together.
+Branch-and-price implementation for the Multiple Knapsack Problem (MKP). It provides classic and relaxed formulations, column generation, and a full branching loop backed by OR-Tools.
 
-## Features
-- **Classic, L2, and Dantzig–Wolfe formulations** with helpers to convert solutions between representations. 【F:src/main/java/ca/udem/gaillarz/formulation/ClassicFormulation.java†L12-L73】【F:src/main/java/ca/udem/gaillarz/formulation/L2RelaxedFormulation.java†L14-L74】【F:src/main/java/ca/udem/gaillarz/formulation/DantzigWolfeMaster.java†L28-L96】
-- **Pattern management** (initialization, statistics, variables) to seed and expand the master problem. 【F:src/main/java/ca/udem/gaillarz/formulation/PatternInitializer.java†L18-L96】【F:src/main/java/ca/udem/gaillarz/formulation/PatternVariable.java†L10-L65】【F:src/main/java/ca/udem/gaillarz/formulation/PatternStatistics.java†L9-L78】
-- **Column generation loop** with OR-Tools-backed LP solving, pricing, and progress reporting. 【F:src/main/java/solver/ColumnGeneration.java†L19-L132】【F:src/main/java/solver/ORToolsSolver.java†L10-L75】【F:src/main/java/solver/CGResult.java†L8-L63】
-- **Interactive demo** that loads instances, runs the formulation pipeline, and prints readable tables. 【F:src/main/java/ca/udem/gaillarz/Main.java†L19-L154】
+## What’s inside
+- **Model & IO**: `model/` holds `Item`, `Knapsack`, `MKPInstance`; `io/` parses and validates instance files.
+- **Formulations**: Classic and L2 relaxations, Dantzig–Wolfe master, pattern initialization/generation, and conversion utilities in `formulation/`.
+- **Solvers**: Lightweight LP wrapper (`solver/lp`), column generation (`solver/cg`), branch-and-price driver with no-good cuts (`solver/bp`), and VSBPP SAT checker for fractional assignments (`solver/vsbpp`).
+- **CLI demo**: `Main` stitches everything together; pick instances, run the solver, and inspect solutions from the console.
+- **Tests**: JUnit 5 coverage for formulations, column generation, and the solver glue in `src/test/java`.
 
-## Project layout
-- `src/main/java/ca/udem/gaillarz/model/` — MKP data model (`Item`, `Knapsack`, `MKPInstance`). 【F:src/main/java/ca/udem/gaillarz/model/MKPInstance.java†L8-L147】
-- `src/main/java/ca/udem/gaillarz/io/` — Parsing helpers and validation for instance files. 【F:src/main/java/ca/udem/gaillarz/io/InstanceReader.java†L20-L156】
-- `src/main/java/ca/udem/gaillarz/formulation/` — Classic/L2/DW formulations, pattern utilities, and conversions. 【F:src/main/java/ca/udem/gaillarz/formulation/DantzigWolfeMaster.java†L28-L130】
-- `src/main/java/solver/` — Lightweight linear programming and column-generation framework, including OR-Tools integration. 【F:src/main/java/solver/LinearProgram.java†L7-L94】【F:src/main/java/solver/ORToolsSolver.java†L10-L75】
-- `src/main/resources/` — Example instance descriptions and metadata. 【F:src/main/resources/readme.txt†L1-L8】
-- `src/test/` — JUnit 5 tests that cover the formulations, pattern generation, and DW master setup. 【F:src/test/java/ca/udem/gaillarz/formulation/DantzigWolfeMasterTest.java†L13-L108】【F:src/test/java/ca/udem/gaillarz/formulation/PatternGeneratorTest.java†L11-L99】
+Project structure (key paths):
+- `src/main/java/ca/udem/gaillarz/model/` – MKP data classes.
+- `src/main/java/ca/udem/gaillarz/io/` – Instance reader/validator.
+- `src/main/java/ca/udem/gaillarz/formulation/` – Classic/L2/DW formulations, patterns, conversions.
+- `src/main/java/ca/udem/gaillarz/solver/` – LP layer, column generation, branch-and-price, SAT checker.
+- `src/main/resources/` – Example instance files (excludes `readme.txt`).
+- `src/test/java/` – Unit tests.
 
-## Getting started
-### Prerequisites
+## Prerequisites
 - Java 25
 - Maven 3.9+
-- OR-Tools native libraries are fetched via Maven; no manual install is required.
+- Internet access for Maven to download OR-Tools (`com.google.ortools:ortools-java`).
 
-### Build & test
+## Build, test, run
 ```bash
+# compile
 mvn compile
+
+# run tests
 mvn test
-```
 
-### Run the interactive demo
-The `Main` class presents several ways to explore the pipeline:
-1. Hardcoded toy example
-2. Random instance from a chosen resource directory
-3. All instances within a resource directory
-4. All discovered instances under `src/main/resources`
-
-Start the demo with:
-```bash
+# launch CLI demo
 mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.Main
 ```
 
-When prompted, select an option. For file-based runs, the CLI lists available resource folders and picks files ending in `.txt` while ignoring `readme.txt`. 【F:src/main/java/ca/udem/gaillarz/Main.java†L21-L111】【F:src/main/java/ca/udem/gaillarz/Main.java†L158-L214】
+## CLI usage
+When the CLI starts you can:
+- `1` Solve a hardcoded toy instance.
+- `2` Pick one instance file from a chosen resources subdirectory.
+- `3` Solve all instances in a chosen resources subdirectory (prints a summary at the end).
+- `4` Solve a random instance in a chosen resources subdirectory.
+- `5` Solve all discovered instances under `src/main/resources` (prints a summary at the end).
+- `v` Toggle verbose logging on/off (persists across runs within the session).
+- `0` Exit.
+
 
 ## Instance format
-Instance files follow the structure documented in `src/main/resources/readme.txt`:
+Located under `src/main/resources/`. Each `.txt` file follows:
 ```
-# counts
 m            # number of knapsacks
 n            # number of items
-
-# capacities
-c1
-c2
-...
-cm
-
-# item data (weight profit)
-w1 p1
-w2 p2
-...
-wn pn
+c1..cm       # knapsack capacities (one per line)
+w p          # weight/profit for each item (n lines)
 ```
-【F:src/main/resources/readme.txt†L1-L8】
+See `src/main/resources/readme.txt` for the exact layout.
 
-## Column generation workflow
-1. Build the **classic** formulation, check feasibility, and derive an **L2** relaxation.
-2. Convert to the **Dantzig–Wolfe master** with initial patterns seeded by `PatternInitializer` (singleton and empty patterns).
-3. Run **column generation** using `ColumnGeneration` and `ORToolsSolver`, which iteratively solves the restricted master, extracts duals, prices new patterns, and adds them to the master until optimal or iteration limits are reached. 【F:src/main/java/ca/udem/gaillarz/formulation/PatternInitializer.java†L18-L96】【F:src/main/java/solver/ColumnGeneration.java†L19-L132】
-4. Visualize the final DW and derived L2/classic solutions through the demo output. 【F:src/main/java/ca/udem/gaillarz/Main.java†L67-L153】
+## Implementation notes
+- **Column generation**: Builds a restricted master LP from the DW master, extracts duals, solves knapsack-based pricing, and iterates until optimality or limits (`CGParameters`).
+- **Branch-and-price**: Manages nodes with bounds/pruning, applies branching filters, re-runs column generation per node, and uses a SAT-based checker to repair fractional assignments.
+- **Outputs**: `BPResult` reports status, objective, best bound, gap, node counts, and runtime; solutions can be rendered in classic form for readability.
 
-## License
-Academic/research use only.
+### Flow and key classes
+- **DW master build**: `L2RelaxedFormulation.toDantzigWolfeFormulation()` constructs the master; `PatternInitializer` seeds singleton/empty patterns; `DWMasterLPBuilder` turns the DW model into a restricted LP.
+- **Restricted master solve**: `ColumnGeneration` calls the LP solver (default `ORToolsSolver`), reads duals, and invokes `PricingProblem` (knapsack subproblem) to inject profitable patterns; terminates on optimality, iteration limit, or no improving column.
+- **Branching**: `BranchAndPrice` runs a best-first search over `BranchNode`s ordered by upper bound. `BranchingRule`/`BranchingStrategy` decide which item/bin to fix, rebuild a node-specific master, and re-enter column generation.
+- **No-good cuts**: `NoGoodCutManager` tracks excluded patterns to avoid regenerating dominated branches.
+- **Fractional repair**: When item selections are integral but assignments are fractional, `OrToolsCpSatVSBPPSATChecker` solves a SAT/CP feasibility fix before further branching.
+- **Statistics & summaries**: Each `BPResult` retains LB/UB, gap, runtime, and node counts; CLI batch runs print aggregate success/failure/optimality plus per-instance objective, gap, and time.
+
+## Contributing & troubleshooting
+- Ensure Java 25 is on your `PATH` (`java -version`).
+- If OR-Tools native libs fail to load, rerun Maven with a clean local repo or check platform compatibility.
+- Add new instances under `src/main/resources/<folder>/` with `.txt` extension.

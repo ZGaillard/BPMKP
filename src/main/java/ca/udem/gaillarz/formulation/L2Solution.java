@@ -1,7 +1,5 @@
 package ca.udem.gaillarz.formulation;
 
-import ca.udem.gaillarz.model.MKPInstance;
-
 import java.util.Arrays;
 
 /**
@@ -57,20 +55,19 @@ public class L2Solution {
      */
     public static L2Solution fromClassicSolution(ClassicSolution classic, int numItems) {
         int m = classic.getNumKnapsacks();
-        int n = numItems;
 
-        double[] t = new double[n];
-        double[][] x = new double[m][n];
+        double[] t = new double[numItems];
+        double[][] x = new double[m][numItems];
 
         boolean[][] assignment = classic.getAssignment();
         for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
+            for (int j = 0; j < numItems; j++) {
                 x[i][j] = assignment[i][j] ? 1.0 : 0.0;
             }
         }
 
         // t_j = 1 if item j is assigned to any knapsack
-        for (int j = 0; j < n; j++) {
+        for (int j = 0; j < numItems; j++) {
             for (int i = 0; i < m; i++) {
                 if (x[i][j] > TOLERANCE) {
                     t[j] = 1.0;
@@ -231,7 +228,20 @@ public class L2Solution {
         boolean[][] assignment = new boolean[numKnapsacks][numItems];
         for (int i = 0; i < numKnapsacks; i++) {
             for (int j = 0; j < numItems; j++) {
-                assignment[i][j] = isItemInKnapsack(i, j);
+                assignment[i][j] = false;
+            }
+        }
+
+        // If an item appears in multiple knapsacks, keep the first one.
+        for (int j = 0; j < numItems; j++) {
+            int chosen = -1;
+            for (int i = 0; i < numKnapsacks; i++) {
+                if (isItemInKnapsack(i, j)) {
+                    if (chosen < 0) {
+                        chosen = i;
+                        assignment[i][j] = true;
+                    } // else ignore extra assignments
+                }
             }
         }
         return new ClassicSolution(assignment);
@@ -311,10 +321,9 @@ public class L2Solution {
     /**
      * Combined detailed view.
      *
-     * @param instance MKP instance for context
      * @return Detailed string representation
      */
-    public String toDetailedString(MKPInstance instance) {
+    public String toDetailedString() {
         StringBuilder sb = new StringBuilder();
         int width = 44;
         String border = "─".repeat(width - 2);
@@ -365,4 +374,3 @@ public class L2Solution {
         return result;
     }
 }
-

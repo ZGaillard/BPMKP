@@ -24,6 +24,7 @@ public class Main {
     static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         Path resourceRoot = Paths.get("src", "main", "resources");
+        boolean verbose = false;
 
         System.out.println("============================================================");
         System.out.println("BRANCH-AND-PRICE MKP SOLVER");
@@ -36,18 +37,24 @@ public class Main {
             System.out.println("  3) Solve all instances in a resource directory");
             System.out.println("  4) Solve a random instance in a resource directory");
             System.out.println("  5) Solve all instances in resources");
+            System.out.printf("  v) Toggle verbose (currently %s)%n", verbose ? "ON" : "OFF");
             System.out.println("  0) Exit");
-            System.out.print("Selection [0-5]: ");
+            System.out.print("Selection [0-5 or v]: ");
             String choice = scanner.nextLine().trim();
             if (choice.isEmpty()) choice = "1";
+            choice = choice.toLowerCase();
 
             try {
                 switch (choice) {
-                    case "1" -> solveExample();
-                    case "2" -> pickAndSolveSingle(scanner, resourceRoot);
-                    case "3" -> solveAllInDirectory(scanner, resourceRoot);
-                    case "4" -> solveRandomInDirectory(scanner, resourceRoot);
-                    case "5" -> solveAllInResources(resourceRoot);
+                    case "1" -> solveExample(verbose);
+                    case "2" -> pickAndSolveSingle(scanner, resourceRoot, verbose);
+                    case "3" -> solveAllInDirectory(scanner, resourceRoot, verbose);
+                    case "4" -> solveRandomInDirectory(scanner, resourceRoot, verbose);
+                    case "5" -> solveAllInResources(resourceRoot, verbose);
+                    case "v" -> {
+                        verbose = !verbose;
+                        System.out.println("Verbose " + (verbose ? "ON" : "OFF"));
+                    }
                     case "0" -> {
                         System.out.println("Bye.");
                         return;
@@ -63,20 +70,18 @@ public class Main {
 
     // ========== Actions ==========
 
-    private static void solveExample() throws InvalidInstanceException {
+    private static void solveExample(boolean verbose) throws InvalidInstanceException {
         MKPInstance instance = buildExampleInstance();
-        boolean verbose = askVerbose(new Scanner(System.in));
         runBP(instance, "Example", verbose);
     }
 
-    private static void pickAndSolveSingle(Scanner scanner, Path root) throws IOException {
+    private static void pickAndSolveSingle(Scanner scanner, Path root, boolean verbose) throws IOException {
         Path dir = promptForDirectory(scanner, root);
         List<Path> files = listInstanceFiles(dir);
         if (files.isEmpty()) {
             System.out.println("No instances found in " + dir);
             return;
         }
-        boolean verbose = askVerbose(scanner);
         System.out.println("Instances in " + dir + ":");
         for (int i = 0; i < files.size(); i++) {
             System.out.printf("  %2d) %s%n", i + 1, dir.relativize(files.get(i)));
@@ -93,56 +98,59 @@ public class Main {
         runFromFile(files.get(idx), verbose);
     }
 
-    private static void solveAllInDirectory(Scanner scanner, Path root) throws IOException {
+    private static void solveAllInDirectory(Scanner scanner, Path root, boolean verbose) throws IOException {
         Path dir = promptForDirectory(scanner, root);
         List<Path> files = listInstanceFiles(dir);
         if (files.isEmpty()) {
             System.out.println("No instances found in " + dir);
             return;
         }
-        boolean verbose = askVerbose(scanner);
+        List<RunSummary> runs = new ArrayList<>();
         for (Path p : files) {
-            runFromFile(p, verbose);
+            runs.add(runFromFile(p, verbose));
         }
+        printRunSummary(runs, dir);
     }
 
-    private static void solveRandomInDirectory(Scanner scanner, Path root) throws IOException {
+    private static void solveRandomInDirectory(Scanner scanner, Path root, boolean verbose) throws IOException {
         Path dir = promptForDirectory(scanner, root);
         List<Path> files = listInstanceFiles(dir);
         if (files.isEmpty()) {
             System.out.println("No instances found in " + dir);
             return;
         }
-        boolean verbose = askVerbose(scanner);
         Path chosen = files.get(ThreadLocalRandom.current().nextInt(files.size()));
         System.out.println("Randomly selected: " + chosen);
         runFromFile(chosen, verbose);
     }
 
-    private static void solveAllInResources(Path root) throws IOException {
+    private static void solveAllInResources(Path root, boolean verbose) throws IOException {
         List<Path> files = listInstanceFiles(root);
         if (files.isEmpty()) {
             System.out.println("No instances found under " + root);
             return;
         }
-        boolean verbose = askVerbose(new Scanner(System.in));
+        List<RunSummary> runs = new ArrayList<>();
         for (Path p : files) {
-            runFromFile(p, verbose);
+            runs.add(runFromFile(p, verbose));
         }
+        printRunSummary(runs, root);
     }
 
     // ========== Helpers ==========
 
-    private static void runFromFile(Path file, boolean verbose) {
+    private static RunSummary runFromFile(Path file, boolean verbose) {
         try {
             MKPInstance instance = InstanceReader.readFromFile(file.toString());
-            runBP(instance, file.toString(), verbose);
+            BPResult res = runBP(instance, file.toString(), verbose);
+            return new RunSummary(file, res, null);
         } catch (Exception e) {
             System.out.println("Failed to solve " + file + ": " + e.getMessage());
+            return new RunSummary(file, null, e.getMessage());
         }
     }
 
-    private static void runBP(MKPInstance instance, String label, boolean verbose) {
+    private static BPResult runBP(MKPInstance instance, String label, boolean verbose) {
         System.out.printf("%n--- Solving %s ---%n", label);
         BranchAndPrice solver = new BranchAndPrice(instance)
                 .setVerbose(verbose)
@@ -156,6 +164,7 @@ public class Main {
             ClassicSolution sol = result.solution();
             System.out.println(sol.toDetailedString(instance));
         }
+        return result;
     }
 
     private static Path promptForDirectory(Scanner scanner, Path root) throws IOException {
@@ -175,12 +184,6 @@ public class Main {
         } catch (NumberFormatException ignored) {
         }
         return dirs.get(idx);
-    }
-
-    private static boolean askVerbose(Scanner scanner) {
-        System.out.print("Enable verbose output? [y/N]: ");
-        String in = scanner.nextLine().trim().toLowerCase();
-        return in.startsWith("y");
     }
 
     private static List<Path> listResourceDirectories(Path root) throws IOException {
@@ -205,6 +208,40 @@ public class Main {
         }
     }
 
+    private static void printRunSummary(List<RunSummary> runs, Path baseDir) {
+        System.out.println("\n=== Run summary ===");
+        int total = runs.size();
+        int failures = 0;
+        int optimal = 0;
+        int withSolution = 0;
+
+        for (RunSummary r : runs) {
+            if (r.result() == null) {
+                failures++;
+                continue;
+            }
+            if (r.result().isOptimal()) optimal++;
+            if (r.result().hasSolution()) withSolution++;
+        }
+
+        System.out.printf("Total: %d | Succeeded: %d | Failures: %d | Optimal: %d | With solution: %d%n",
+                total, total - failures, failures, optimal, withSolution);
+
+        for (RunSummary r : runs) {
+            String name = r.file().toString();
+            if (baseDir != null && r.file().startsWith(baseDir)) {
+                name = baseDir.relativize(r.file()).toString();
+            }
+            if (r.result() != null) {
+                BPResult res = r.result();
+                System.out.printf("  - %s: %s obj=%.3f gap=%.2f%% time=%.2fs%n",
+                        name, res.status(), res.objectiveValue(), res.gap() * 100.0, res.solveTimeMs() / 1000.0);
+            } else {
+                System.out.printf("  - %s: FAILED (%s)%n", name, r.error());
+            }
+        }
+    }
+
     private static MKPInstance buildExampleInstance() throws InvalidInstanceException {
         String content = """
                 2
@@ -218,5 +255,8 @@ public class Main {
                 1\t4
                 """;
         return InstanceReader.parseFromString(content, "example");
+    }
+
+    private record RunSummary(Path file, BPResult result, String error) {
     }
 }

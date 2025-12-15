@@ -2,7 +2,9 @@ package ca.udem.gaillarz.formulation;
 
 import ca.udem.gaillarz.model.MKPInstance;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Dantzig-Wolfe Master formulation (equations 28-33).
@@ -21,7 +23,7 @@ import java.util.*;
  *
  *       0 ≤ s_j ≤ 1                            for j = 1,...,n      (33)
  * </pre>
- *
+ * <p>
  * Key relationships to L2:
  * <pre>
  *   t_j = Σ_{a∈P_0} a_j * y_a    (derive item selection)
@@ -106,7 +108,7 @@ public class DantzigWolfeMaster {
         Pattern greedyP0 = buildGreedyPattern(instance.getTotalCapacity());
         safeAddP0(greedyP0);
         for (int i = 0; i < instance.getNumKnapsacks(); i++) {
-            Pattern greedy = buildGreedyPattern(instance.getKnapsack(i).getCapacity());
+            Pattern greedy = buildGreedyPattern(instance.getKnapsack(i).capacity());
             safeAddPI(i, greedy);
         }
     }
@@ -123,8 +125,8 @@ public class DantzigWolfeMaster {
     public void addPatternP0(Pattern pattern) {
         if (!pattern.isFeasible(instance.getTotalCapacity())) {
             throw new FormulationException(
-                String.format("Pattern weight %d exceeds total capacity %d",
-                    pattern.getTotalWeight(), instance.getTotalCapacity()));
+                    String.format("Pattern weight %d exceeds total capacity %d",
+                            pattern.getTotalWeight(), instance.getTotalCapacity()));
         }
 
         for (Pattern existing : patternsP0) {
@@ -148,11 +150,11 @@ public class DantzigWolfeMaster {
             throw new IllegalArgumentException("Invalid knapsack ID: " + knapsackId);
         }
 
-        int capacity = instance.getKnapsack(knapsackId).getCapacity();
+        int capacity = instance.getKnapsack(knapsackId).capacity();
         if (!pattern.isFeasible(capacity)) {
             throw new FormulationException(
-                String.format("Pattern weight %d exceeds knapsack %d capacity %d",
-                    pattern.getTotalWeight(), knapsackId, capacity));
+                    String.format("Pattern weight %d exceeds knapsack %d capacity %d",
+                            pattern.getTotalWeight(), knapsackId, capacity));
         }
 
         List<Pattern> patterns = patternsPI.get(knapsackId);
@@ -245,6 +247,13 @@ public class DantzigWolfeMaster {
     }
 
     /**
+     * @return Current upper bound
+     */
+    public double getUpperBound() {
+        return upperBound;
+    }
+
+    /**
      * Set upper bound for constraint (31).
      *
      * @param ub Upper bound value
@@ -253,14 +262,8 @@ public class DantzigWolfeMaster {
         this.upperBound = ub;
     }
 
-    /**
-     * @return Current upper bound
-     */
-    public double getUpperBound() {
-        return upperBound;
-    }
-
     // ========== Objective and Feasibility ==========
+
     /**
      * Compute objective value (equation 28).
      * Objective = Σ_{a∈P_0} (Σ_j p_j*a_j)*y_a - Σ_j p_j*s_j
@@ -278,7 +281,7 @@ public class DantzigWolfeMaster {
 
         // Dual cut penalty: -Σ_j p_j*s_j
         for (int j = 0; j < instance.getNumItems(); j++) {
-            objective -= instance.getItem(j).getProfit() * solution.getDualCutValue(j);
+            objective -= instance.getItem(j).profit() * solution.getDualCutValue(j);
         }
 
         return objective;
@@ -292,8 +295,8 @@ public class DantzigWolfeMaster {
      */
     public boolean isFeasible(DWSolution solution) {
         return checkItemConsistency(solution) &&
-               checkPatternSelection(solution) &&
-               checkUpperBound(solution);
+                checkPatternSelection(solution) &&
+                checkUpperBound(solution);
     }
 
     /**
@@ -377,10 +380,10 @@ public class DantzigWolfeMaster {
 
     /**
      * Convert DW solution to L2 solution.
-     *
+     * <p>
      * Derives:
-     *   t_j = Σ_{a∈P_0} a_j * y_a
-     *   x_ij = Σ_{a∈P_i} a_j * y_a
+     * t_j = Σ_{a∈P_0} a_j * y_a
+     * x_ij = Σ_{a∈P_i} a_j * y_a
      *
      * @param dwSolution DW solution to convert
      * @return Corresponding L2 solution
@@ -453,17 +456,13 @@ public class DantzigWolfeMaster {
         });
 
         for (int j : order) {
-            int w = instance.getItem(j).getWeight();
+            int w = instance.getItem(j).weight();
             if (currentWeight + w <= capacity) {
                 selected[j] = true;
                 currentWeight += w;
             }
         }
         return new Pattern(selected, instance);
-    }
-
-    private Pattern copyPattern(Pattern pattern) {
-        return new Pattern(pattern.getItems(), instance);
     }
 
     /**
@@ -550,7 +549,7 @@ public class DantzigWolfeMaster {
                 patternsP0.size(), instance.getTotalCapacity()));
         for (int i = 0; i < instance.getNumKnapsacks(); i++) {
             sb.append(String.format("  P_%d: %d patterns (capacity = %d)\n",
-                    i + 1, patternsPI.get(i).size(), instance.getKnapsack(i).getCapacity()));
+                    i + 1, patternsPI.get(i).size(), instance.getKnapsack(i).capacity()));
         }
         sb.append(String.format("\nTotal patterns: %d\n", getTotalPatternCount()));
         sb.append(String.format("Upper bound: %.1f\n\n", upperBound));

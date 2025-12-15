@@ -72,9 +72,9 @@ class PatternGeneratorTest {
         List<Pattern> patterns = generator.generateInitialPatternsP0();
         PatternStatistics stats = generator.getStatistics(patterns, instance.getTotalCapacity());
 
-        assertTrue(stats.getTotalPatterns() > 0);
-        assertTrue(stats.getAvgCapacityUtilization() > 0.0);
-        assertTrue(stats.getAvgCapacityUtilization() <= 1.0);
+        assertTrue(stats.totalPatterns() > 0);
+        assertTrue(stats.avgCapacityUtilization() > 0.0);
+        assertTrue(stats.avgCapacityUtilization() <= 1.0);
     }
 
     private double bruteForceBestProfit(MKPInstance instance, int capacity) {
@@ -85,8 +85,8 @@ class PatternGeneratorTest {
             int profit = 0;
             for (int j = 0; j < n; j++) {
                 if ((mask & (1 << j)) != 0) {
-                    weight += instance.getItem(j).getWeight();
-                    profit += instance.getItem(j).getProfit();
+                    weight += instance.getItem(j).weight();
+                    profit += instance.getItem(j).profit();
                 }
             }
             if (weight <= capacity && profit > best) {

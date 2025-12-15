@@ -5,14 +5,12 @@ import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class PatternInitializerTest {
 
     @Test
-    void testInitializeMaster() throws IOException, InvalidInstanceException {
+    void testInitializeMaster() throws InvalidInstanceException {
         MKPInstance instance = InstanceReader.parseFromString("""
                 2
                 5
@@ -30,15 +28,15 @@ class PatternInitializerTest {
 
         InitializationResult result = PatternInitializer.initialize(master);
 
-        assertTrue(result.getPatternsP0() > 0);
-        assertTrue(result.getPatternsPI() > 0);
-        assertEquals(master.getTotalPatternCount(), result.getTotalPatterns());
+        assertTrue(result.patternsP0() > 0);
+        assertTrue(result.patternsPI() > 0);
+        assertEquals(master.getTotalPatternCount(), result.totalPatterns());
 
         for (Pattern p : master.getPatternsP0()) {
             assertTrue(p.isFeasible(instance.getTotalCapacity()));
         }
         for (int i = 0; i < instance.getNumKnapsacks(); i++) {
-            int capacity = instance.getKnapsack(i).getCapacity();
+            int capacity = instance.getKnapsack(i).capacity();
             for (Pattern p : master.getPatternsPI(i)) {
                 assertTrue(p.isFeasible(capacity));
             }

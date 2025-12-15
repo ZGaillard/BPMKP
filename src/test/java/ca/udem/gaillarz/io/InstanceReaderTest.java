@@ -32,16 +32,16 @@ class InstanceReaderTest {
         assertEquals(2, instance.getNumKnapsacks());
 
         // Check knapsacks
-        assertEquals(10, instance.getKnapsack(0).getCapacity());
-        assertEquals(8, instance.getKnapsack(1).getCapacity());
+        assertEquals(10, instance.getKnapsack(0).capacity());
+        assertEquals(8, instance.getKnapsack(1).capacity());
 
         // Check items (weight, profit)
-        assertEquals(5, instance.getItem(0).getWeight());
-        assertEquals(10, instance.getItem(0).getProfit());
-        assertEquals(4, instance.getItem(1).getWeight());
-        assertEquals(8, instance.getItem(1).getProfit());
-        assertEquals(3, instance.getItem(2).getWeight());
-        assertEquals(6, instance.getItem(2).getProfit());
+        assertEquals(5, instance.getItem(0).weight());
+        assertEquals(10, instance.getItem(0).profit());
+        assertEquals(4, instance.getItem(1).weight());
+        assertEquals(8, instance.getItem(1).profit());
+        assertEquals(3, instance.getItem(2).weight());
+        assertEquals(6, instance.getItem(2).profit());
     }
 
     @Test
@@ -92,12 +92,12 @@ class InstanceReaderTest {
         assertEquals(original.getTotalProfit(), loaded.getTotalProfit());
 
         for (int i = 0; i < original.getNumKnapsacks(); i++) {
-            assertEquals(original.getKnapsack(i).getCapacity(), loaded.getKnapsack(i).getCapacity());
+            assertEquals(original.getKnapsack(i).capacity(), loaded.getKnapsack(i).capacity());
         }
 
         for (int j = 0; j < original.getNumItems(); j++) {
-            assertEquals(original.getItem(j).getWeight(), loaded.getItem(j).getWeight());
-            assertEquals(original.getItem(j).getProfit(), loaded.getItem(j).getProfit());
+            assertEquals(original.getItem(j).weight(), loaded.getItem(j).weight());
+            assertEquals(original.getItem(j).profit(), loaded.getItem(j).profit());
         }
     }
 
@@ -180,8 +180,8 @@ class InstanceReaderTest {
         MKPInstance instance = InstanceReader.parseFromString(content);
 
         assertEquals(3, instance.getNumItems());
-        assertEquals(5, instance.getItem(0).getWeight());
-        assertEquals(10, instance.getItem(0).getProfit());
+        assertEquals(5, instance.getItem(0).weight());
+        assertEquals(10, instance.getItem(0).profit());
     }
 
     @Test

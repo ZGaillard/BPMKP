@@ -1,4 +1,4 @@
-package ca.udem.gaillarz.solver;
+package ca.udem.gaillarz.solver.knapsack;
 
 import ca.udem.gaillarz.model.Item;
 import org.junit.jupiter.api.Test;

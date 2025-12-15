@@ -23,19 +23,17 @@ import java.util.Objects;
  */
 public class PatternVariable {
 
-    /**
-     * Pool type in the Dantzig-Wolfe master formulation.
-     */
-    public enum PoolType {
-        /** Aggregated capacity pool (P_0) */
-        P0,
-        /** Individual knapsack pool (P_i for i = 1, ..., m) */
-        PI
-    }
-
     private final Pattern pattern;
     private final PoolType poolType;
     private final int poolIndex;  // For PI: knapsack index (0 to m-1)
+    /**
+     * Private constructor - use factory methods.
+     */
+    private PatternVariable(Pattern pattern, PoolType poolType, int poolIndex) {
+        this.pattern = pattern;
+        this.poolType = poolType;
+        this.poolIndex = poolIndex;
+    }
     // For P0: always -1
 
     /**
@@ -54,8 +52,8 @@ public class PatternVariable {
     /**
      * Create a pattern variable for a P_i pool (individual knapsack).
      *
-     * @param pattern     Pattern in P_i
-     * @param knapsackId  Knapsack index (0-based)
+     * @param pattern    Pattern in P_i
+     * @param knapsackId Knapsack index (0-based)
      * @return PatternVariable for y_a where a ∈ P_i
      */
     public static PatternVariable forPI(Pattern pattern, int knapsackId) {
@@ -66,15 +64,6 @@ public class PatternVariable {
             throw new IllegalArgumentException("Knapsack ID must be non-negative");
         }
         return new PatternVariable(pattern, PoolType.PI, knapsackId);
-    }
-
-    /**
-     * Private constructor - use factory methods.
-     */
-    private PatternVariable(Pattern pattern, PoolType poolType, int poolIndex) {
-        this.pattern = pattern;
-        this.poolType = poolType;
-        this.poolIndex = poolIndex;
     }
 
     /**
@@ -163,5 +152,19 @@ public class PatternVariable {
         } else {
             return String.format("y_P%d[%s]", poolIndex + 1, pattern.getItemIds());
         }
+    }
+
+    /**
+     * Pool type in the Dantzig-Wolfe master formulation.
+     */
+    public enum PoolType {
+        /**
+         * Aggregated capacity pool (P_0)
+         */
+        P0,
+        /**
+         * Individual knapsack pool (P_i for i = 1, ..., m)
+         */
+        PI
     }
 }

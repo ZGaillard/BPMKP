@@ -19,27 +19,24 @@ import java.util.Set;
  *       x_ij ∈ {0,1}                         for all i,j          (4)
  * </pre>
  */
-public class ClassicFormulation {
-    private static final double TOLERANCE = 1e-5;
-
-    private final MKPInstance instance;
+public record ClassicFormulation(MKPInstance instance) {
 
     /**
      * Creates a classic formulation for the given MKP instance.
      *
      * @param instance MKP instance
      */
-    public ClassicFormulation(MKPInstance instance) {
+    public ClassicFormulation {
         if (instance == null) {
             throw new IllegalArgumentException("Instance cannot be null");
         }
-        this.instance = instance;
     }
 
     /**
      * @return The underlying MKP instance
      */
-    public MKPInstance getInstance() {
+    @Override
+    public MKPInstance instance() {
         return instance;
     }
 
@@ -56,7 +53,7 @@ public class ClassicFormulation {
         for (int i = 0; i < instance.getNumKnapsacks(); i++) {
             for (int j = 0; j < instance.getNumItems(); j++) {
                 if (solution.isItemInKnapsack(i, j)) {
-                    objective += instance.getItem(j).getProfit();
+                    objective += instance.getItem(j).profit();
                 }
             }
         }
@@ -84,7 +81,7 @@ public class ClassicFormulation {
 
         for (int i = 0; i < instance.getNumKnapsacks(); i++) {
             int weight = getKnapsackWeight(solution, i);
-            if (weight > instance.getKnapsack(i).getCapacity()) {
+            if (weight > instance.getKnapsack(i).capacity()) {
                 return false;
             }
         }
@@ -125,7 +122,7 @@ public class ClassicFormulation {
         int weight = 0;
         for (int j = 0; j < instance.getNumItems(); j++) {
             if (solution.isItemInKnapsack(knapsackId, j)) {
-                weight += instance.getItem(j).getWeight();
+                weight += instance.getItem(j).weight();
             }
         }
         return weight;
@@ -153,11 +150,11 @@ public class ClassicFormulation {
 
     private void validateSolutionDimensions(ClassicSolution solution) {
         if (solution.getNumKnapsacks() != instance.getNumKnapsacks() ||
-            solution.getNumItems() != instance.getNumItems()) {
+                solution.getNumItems() != instance.getNumItems()) {
             throw new FormulationException(
-                String.format("Solution dimensions (%d knapsacks, %d items) don't match instance (%d, %d)",
-                    solution.getNumKnapsacks(), solution.getNumItems(),
-                    instance.getNumKnapsacks(), instance.getNumItems()));
+                    String.format("Solution dimensions (%d knapsacks, %d items) don't match instance (%d, %d)",
+                            solution.getNumKnapsacks(), solution.getNumItems(),
+                            instance.getNumKnapsacks(), instance.getNumItems()));
         }
     }
 
@@ -186,7 +183,7 @@ public class ClassicFormulation {
             for (int j = 0; j < Math.min(n, 5); j++) {
                 Item item = instance.getItem(j);
                 if (!first) sb.append(" + ");
-                sb.append(String.format("%d*x[%d][%d]", item.getProfit(), i, j));
+                sb.append(String.format("%d*x[%d][%d]", item.profit(), i, j));
                 first = false;
             }
         }
@@ -202,11 +199,11 @@ public class ClassicFormulation {
             for (int j = 0; j < Math.min(n, 5); j++) {
                 Item item = instance.getItem(j);
                 if (!first) sb.append(" + ");
-                sb.append(String.format("%d*x[%d][%d]", item.getWeight(), i, j));
+                sb.append(String.format("%d*x[%d][%d]", item.weight(), i, j));
                 first = false;
             }
             if (n > 5) sb.append(" + ...");
-            sb.append(String.format(" ≤ %d\n", ks.getCapacity()));
+            sb.append(String.format(" ≤ %d\n", ks.capacity()));
         }
         if (m > 3) sb.append("     ...\n");
         sb.append("\n");

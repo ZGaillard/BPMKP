@@ -4,7 +4,8 @@ import ca.udem.gaillarz.model.Item;
 import ca.udem.gaillarz.model.Knapsack;
 import ca.udem.gaillarz.model.MKPInstance;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,8 +24,6 @@ import java.util.List;
  * </pre>
  */
 public class InstanceReader {
-
-    private static final double TOLERANCE = 1e-5;
 
     /**
      * Read MKP instance from file.
@@ -205,12 +204,12 @@ public class InstanceReader {
 
         // Knapsack capacities
         for (Knapsack ks : instance.getKnapsacks()) {
-            sb.append(ks.getCapacity()).append("\n");
+            sb.append(ks.capacity()).append("\n");
         }
 
         // Items (weight, profit)
         for (Item item : instance.getItems()) {
-            sb.append(item.getWeight()).append("\t").append(item.getProfit()).append("\n");
+            sb.append(item.weight()).append("\t").append(item.profit()).append("\n");
         }
 
         return sb.toString();

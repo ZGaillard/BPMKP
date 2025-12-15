@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 /**
  * Solution to the Dantzig-Wolfe master formulation.
  * Contains y_a (pattern values) and s_j (dual cut values).
- *
+ * <p>
  * REDESIGNED: Uses PatternVariable for content-based pattern identification
  * with explicit pool tracking.
  */
@@ -79,8 +79,8 @@ public class DWSolution {
      * Get y_a value for a pattern in P_i pool.
      * Convenience method - creates PatternVariable internally.
      *
-     * @param pattern     Pattern to query
-     * @param knapsackId  Knapsack index
+     * @param pattern    Pattern to query
+     * @param knapsackId Knapsack index
      * @return y_a value for this pattern in P_i
      */
     public double getPatternValuePI(Pattern pattern, int knapsackId) {

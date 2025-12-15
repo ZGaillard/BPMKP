@@ -2,6 +2,7 @@ package ca.udem.gaillarz.solver.bp;
 
 import ca.udem.gaillarz.formulation.*;
 import ca.udem.gaillarz.model.MKPInstance;
+import ca.udem.gaillarz.solver.cg.CGParameters;
 import ca.udem.gaillarz.solver.cg.CGResult;
 import ca.udem.gaillarz.solver.cg.CGStatus;
 import ca.udem.gaillarz.solver.cg.ColumnGeneration;
@@ -141,7 +142,8 @@ public class BranchAndPrice {
             }
 
             ColumnGeneration cg = new ColumnGeneration(nodeMaster, lpSolver);
-            CGResult cgResult = cg.solve();
+            CGParameters cgParams = new CGParameters().setVerbose(verbose);
+            CGResult cgResult = cg.solve(cgParams);
 
             if (cgResult.status() != CGStatus.OPTIMAL) {
                 nodesInfeasible++;
@@ -314,23 +316,25 @@ public class BranchAndPrice {
      */
     public static class DantzigWolfeFormulationWithPatterns extends DantzigWolfeMaster implements SupportsNoGoodCuts {
         private final NoGoodCutManager cutManager;
+        private final java.util.Set<Integer> requiredItems;
+        private final java.util.Set<Integer> forbiddenItems;
 
         DantzigWolfeFormulationWithPatterns(BranchNode node, DantzigWolfeMaster source, L2RelaxedFormulation l2, NoGoodCutManager cutManager) {
             super(l2);
             this.cutManager = cutManager;
-            var required = node.getRequiredItems();
-            var forbidden = node.getForbiddenItems();
+            this.requiredItems = java.util.Set.copyOf(node.getRequiredItems());
+            this.forbiddenItems = java.util.Set.copyOf(node.getForbiddenItems());
 
             // P0
             for (Pattern p : source.getPatternsP0()) {
-                if (isCompatible(p, required, forbidden, true)) {
+                if (isCompatible(p, requiredItems, forbiddenItems, true)) {
                     addPatternP0(p);
                 }
             }
             // PI
             for (int i = 0; i < getInstance().getNumKnapsacks(); i++) {
                 for (Pattern p : source.getPatternsPI(i)) {
-                    if (isCompatible(p, required, forbidden, false)) {
+                    if (isCompatible(p, requiredItems, forbiddenItems, false)) {
                         addPatternPI(i, p);
                     }
                 }
@@ -352,6 +356,14 @@ public class BranchAndPrice {
         @Override
         public NoGoodCutManager getCutManager() {
             return cutManager;
+        }
+
+        public java.util.Set<Integer> getRequiredItems() {
+            return requiredItems;
+        }
+
+        public java.util.Set<Integer> getForbiddenItems() {
+            return forbiddenItems;
         }
     }
 }

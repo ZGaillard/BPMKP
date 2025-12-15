@@ -48,9 +48,9 @@ public class MKPInstance {
         this.name = name != null ? name : "unnamed";
 
         // Compute cached values
-        this.totalCapacity = knapsacks.stream().mapToInt(Knapsack::getCapacity).sum();
-        this.totalWeight = items.stream().mapToInt(Item::getWeight).sum();
-        this.totalProfit = items.stream().mapToInt(Item::getProfit).sum();
+        this.totalCapacity = knapsacks.stream().mapToInt(Knapsack::capacity).sum();
+        this.totalWeight = items.stream().mapToInt(Item::weight).sum();
+        this.totalProfit = items.stream().mapToInt(Item::profit).sum();
     }
 
     /**
@@ -145,7 +145,7 @@ public class MKPInstance {
         // Check at least one item fits in at least one knapsack
         for (Item item : items) {
             for (Knapsack knapsack : knapsacks) {
-                if (item.getWeight() <= knapsack.getCapacity()) {
+                if (item.weight() <= knapsack.capacity()) {
                     return true;
                 }
             }
@@ -178,7 +178,7 @@ public class MKPInstance {
         for (int j = 0; j < Math.min(items.size(), 10); j++) {
             Item item = items.get(j);
             String itemStr = String.format("  [%d] profit=%d, weight=%d (r=%.2f)",
-                    j, item.getProfit(), item.getWeight(), item.getProfitWeightRatio());
+                    j, item.profit(), item.weight(), item.getProfitWeightRatio());
             sb.append(String.format("│ %-" + (width - 4) + "s │\n", itemStr));
         }
         if (items.size() > 10) {
@@ -190,7 +190,7 @@ public class MKPInstance {
         sb.append(String.format("│ %-" + (width - 4) + "s │\n", "Knapsacks:"));
         for (int i = 0; i < Math.min(knapsacks.size(), 10); i++) {
             Knapsack ks = knapsacks.get(i);
-            String ksStr = String.format("  [%d] capacity=%d", i, ks.getCapacity());
+            String ksStr = String.format("  [%d] capacity=%d", i, ks.capacity());
             sb.append(String.format("│ %-" + (width - 4) + "s │\n", ksStr));
         }
         if (knapsacks.size() > 10) {
@@ -222,7 +222,7 @@ public class MKPInstance {
         for (int j = 0; j < Math.min(items.size(), 20); j++) {
             Item item = items.get(j);
             sb.append(String.format("| %2d | %6d | %6d | %5.2f |\n",
-                    j, item.getProfit(), item.getWeight(), item.getProfitWeightRatio()));
+                    j, item.profit(), item.weight(), item.getProfitWeightRatio()));
         }
         if (items.size() > 20) {
             sb.append(String.format("| .. |    ... |    ... |   ... | (%d more)\n", items.size() - 20));
@@ -235,7 +235,7 @@ public class MKPInstance {
         sb.append("+----+----------+\n");
         for (int i = 0; i < Math.min(knapsacks.size(), 20); i++) {
             Knapsack ks = knapsacks.get(i);
-            sb.append(String.format("| %2d | %8d |\n", i, ks.getCapacity()));
+            sb.append(String.format("| %2d | %8d |\n", i, ks.capacity()));
         }
         if (knapsacks.size() > 20) {
             sb.append(String.format("| .. |      ... | (%d more)\n", knapsacks.size() - 20));

@@ -65,7 +65,7 @@ public class L2RelaxedFormulation {
 
         double objective = 0.0;
         for (int j = 0; j < instance.getNumItems(); j++) {
-            objective += instance.getItem(j).getProfit() * solution.getItemSelection(j);
+            objective += instance.getItem(j).profit() * solution.getItemSelection(j);
         }
         return objective;
     }
@@ -88,7 +88,7 @@ public class L2RelaxedFormulation {
 
         // Σ_j (p_j - μ_j) * t_j
         for (int j = 0; j < instance.getNumItems(); j++) {
-            objective += (instance.getItem(j).getProfit() - mu[j]) * solution.getItemSelection(j);
+            objective += (instance.getItem(j).profit() - mu[j]) * solution.getItemSelection(j);
         }
 
         // Σ_j μ_j * (Σ_i x_ij)
@@ -111,8 +111,8 @@ public class L2RelaxedFormulation {
      */
     public boolean isFeasible(L2Solution solution) {
         return checkKnapsackCapacities(solution) &&
-               checkLinkingConstraints(solution) &&
-               checkAggregatedCapacity(solution);
+                checkLinkingConstraints(solution) &&
+                checkAggregatedCapacity(solution);
     }
 
     /**
@@ -127,9 +127,9 @@ public class L2RelaxedFormulation {
         for (int i = 0; i < instance.getNumKnapsacks(); i++) {
             double weight = 0.0;
             for (int j = 0; j < instance.getNumItems(); j++) {
-                weight += instance.getItem(j).getWeight() * solution.getItemAssignment(i, j);
+                weight += instance.getItem(j).weight() * solution.getItemAssignment(i, j);
             }
-            if (weight > instance.getKnapsack(i).getCapacity() + TOLERANCE) {
+            if (weight > instance.getKnapsack(i).capacity() + TOLERANCE) {
                 return false;
             }
         }
@@ -168,7 +168,7 @@ public class L2RelaxedFormulation {
 
         double totalWeight = 0.0;
         for (int j = 0; j < instance.getNumItems(); j++) {
-            totalWeight += instance.getItem(j).getWeight() * solution.getItemSelection(j);
+            totalWeight += instance.getItem(j).weight() * solution.getItemSelection(j);
         }
         return totalWeight <= totalCapacity + TOLERANCE;
     }
@@ -193,11 +193,11 @@ public class L2RelaxedFormulation {
 
     private void validateSolutionDimensions(L2Solution solution) {
         if (solution.getNumKnapsacks() != instance.getNumKnapsacks() ||
-            solution.getNumItems() != instance.getNumItems()) {
+                solution.getNumItems() != instance.getNumItems()) {
             throw new FormulationException(
-                String.format("Solution dimensions (%d knapsacks, %d items) don't match instance (%d, %d)",
-                    solution.getNumKnapsacks(), solution.getNumItems(),
-                    instance.getNumKnapsacks(), instance.getNumItems()));
+                    String.format("Solution dimensions (%d knapsacks, %d items) don't match instance (%d, %d)",
+                            solution.getNumKnapsacks(), solution.getNumItems(),
+                            instance.getNumKnapsacks(), instance.getNumItems()));
         }
     }
 
@@ -226,7 +226,7 @@ public class L2RelaxedFormulation {
         for (int j = 0; j < Math.min(n, 5); j++) {
             Item item = instance.getItem(j);
             if (!first) sb.append(" + ");
-            sb.append(String.format("%d*t[%d]", item.getProfit(), j));
+            sb.append(String.format("%d*t[%d]", item.profit(), j));
             first = false;
         }
         if (n > 5) sb.append(" + ...");
@@ -241,11 +241,11 @@ public class L2RelaxedFormulation {
             for (int j = 0; j < Math.min(n, 5); j++) {
                 Item item = instance.getItem(j);
                 if (!first) sb.append(" + ");
-                sb.append(String.format("%d*x[%d][%d]", item.getWeight(), i, j));
+                sb.append(String.format("%d*x[%d][%d]", item.weight(), i, j));
                 first = false;
             }
             if (n > 5) sb.append(" + ...");
-            sb.append(String.format(" ≤ %d\n", ks.getCapacity()));
+            sb.append(String.format(" ≤ %d\n", ks.capacity()));
         }
         if (m > 3) sb.append("     ...\n");
         sb.append("\n");
@@ -272,7 +272,7 @@ public class L2RelaxedFormulation {
         for (int j = 0; j < Math.min(n, 5); j++) {
             Item item = instance.getItem(j);
             if (!first) sb.append(" + ");
-            sb.append(String.format("%d*t[%d]", item.getWeight(), j));
+            sb.append(String.format("%d*t[%d]", item.weight(), j));
             first = false;
         }
         if (n > 5) sb.append(" + ...");
@@ -311,7 +311,7 @@ public class L2RelaxedFormulation {
         for (int j = 0; j < Math.min(n, 3); j++) {
             Item item = instance.getItem(j);
             if (!first) sb.append(" + ");
-            double coeff = item.getProfit() - mu[j];
+            double coeff = item.profit() - mu[j];
             sb.append(String.format("%.1f*t[%d]", coeff, j));
             first = false;
         }
@@ -353,7 +353,7 @@ public class L2RelaxedFormulation {
                 checkAggregatedCapacity(solution) ? "✓" : "✗"));
 
         // Show detailed solution
-        sb.append(solution.toDetailedString(instance));
+        sb.append(solution.toDetailedString());
 
         return sb.toString();
     }

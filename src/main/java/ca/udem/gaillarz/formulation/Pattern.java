@@ -3,7 +3,9 @@ package ca.udem.gaillarz.formulation;
 import ca.udem.gaillarz.model.Item;
 import ca.udem.gaillarz.model.MKPInstance;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -34,8 +36,8 @@ public class Pattern {
         }
         if (items.length != instance.getNumItems()) {
             throw new IllegalArgumentException(
-                String.format("Items array length (%d) must match instance items (%d)",
-                    items.length, instance.getNumItems()));
+                    String.format("Items array length (%d) must match instance items (%d)",
+                            items.length, instance.getNumItems()));
         }
 
         this.numItems = items.length;
@@ -47,8 +49,8 @@ public class Pattern {
         double profit = 0.0;
         for (int j = 0; j < numItems; j++) {
             if (items[j]) {
-                weight += instance.getItem(j).getWeight();
-                profit += instance.getItem(j).getProfit();
+                weight += instance.getItem(j).weight();
+                profit += instance.getItem(j).profit();
             }
         }
         this.totalWeight = weight;
@@ -268,7 +270,7 @@ public class Pattern {
             if (items[j]) {
                 Item item = instance.getItem(j);
                 sb.append(String.format("| %4d | %6d | %6.1f |\n",
-                        j, item.getWeight(), (double) item.getProfit()));
+                        j, item.weight(), (double) item.profit()));
             }
         }
 

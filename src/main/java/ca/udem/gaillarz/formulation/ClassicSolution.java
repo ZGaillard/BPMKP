@@ -11,7 +11,6 @@ import java.util.Set;
  * Contains the x_ij assignment variables.
  */
 public class ClassicSolution {
-    private static final double TOLERANCE = 1e-5;
 
     private final boolean[][] assignment;  // x_ij values: assignment[i][j]
     private final int numKnapsacks;
@@ -248,11 +247,11 @@ public class ClassicSolution {
 
         for (int i = 0; i < numKnapsacks; i++) {
             Set<Integer> items = getItemsInKnapsack(i);
-            int ksWeight = items.stream().mapToInt(j -> instance.getItem(j).getWeight()).sum();
-            int ksProfit = items.stream().mapToInt(j -> instance.getItem(j).getProfit()).sum();
+            int ksWeight = items.stream().mapToInt(j -> instance.getItem(j).weight()).sum();
+            int ksProfit = items.stream().mapToInt(j -> instance.getItem(j).profit()).sum();
             totalProfit += ksProfit;
 
-            int capacity = instance.getKnapsack(i).getCapacity();
+            int capacity = instance.getKnapsack(i).capacity();
             boolean overflow = ksWeight > capacity;
             if (overflow) feasible = false;
 
@@ -265,13 +264,13 @@ public class ClassicSolution {
 
             if (!items.isEmpty()) {
                 String weights = items.stream()
-                        .map(j -> String.valueOf(instance.getItem(j).getWeight()))
+                        .map(j -> String.valueOf(instance.getItem(j).weight()))
                         .reduce((a, b) -> a + ", " + b).orElse("");
                 sb.append(String.format("│   Weights: %-" + (width - 15) + "s │\n",
                         weights.length() > width - 15 ? weights.substring(0, width - 18) + "..." : weights));
 
                 String profits = items.stream()
-                        .map(j -> String.valueOf(instance.getItem(j).getProfit()))
+                        .map(j -> String.valueOf(instance.getItem(j).profit()))
                         .reduce((a, b) -> a + ", " + b).orElse("");
                 sb.append(String.format("│   Profits: %-" + (width - 15) + "s │\n",
                         profits.length() > width - 15 ? profits.substring(0, width - 18) + "..." : profits));
@@ -296,6 +295,14 @@ public class ClassicSolution {
             unassignedStr = unassignedStr.substring(0, width - 18) + "...";
         }
         sb.append(String.format("│ Unassigned: %-" + (width - 15) + "s │\n", unassignedStr));
+        if (!unassigned.isEmpty()) {
+            sb.append(String.format("│ %-" + (width - 4) + "s │\n", "Unassigned details:"));
+            for (int j : unassigned) {
+                int w = instance.getItem(j).weight();
+                int p = instance.getItem(j).profit();
+                sb.append(String.format("│   item %2d: w=%4d p=%4d %-" + (width - 23) + "s │\n", j, w, p, ""));
+            }
+        }
         sb.append("└").append(border).append("┘\n");
 
         sb.append(String.format("Total profit: %d\n", totalProfit));
@@ -317,4 +324,3 @@ public class ClassicSolution {
         return Arrays.deepHashCode(assignment);
     }
 }
-

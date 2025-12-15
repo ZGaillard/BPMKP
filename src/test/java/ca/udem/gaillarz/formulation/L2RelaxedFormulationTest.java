@@ -158,7 +158,7 @@ class L2RelaxedFormulationTest {
         ClassicFormulation classic = formulation.toClassicFormulation();
 
         assertNotNull(classic);
-        assertEquals(instance, classic.getInstance());
+        assertEquals(instance, classic.instance());
     }
 
     @Test
