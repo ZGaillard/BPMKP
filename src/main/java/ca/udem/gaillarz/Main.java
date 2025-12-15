@@ -1,164 +1,113 @@
 package ca.udem.gaillarz;
 
-import ca.udem.gaillarz.formulation.*;
+import ca.udem.gaillarz.formulation.ClassicSolution;
 import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
-import solver.*;
+import solver.BPResult;
+import solver.BranchAndPrice;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Demonstration entry point for the MKP formulations and column generation.
+ * CLI to solve MKP instances with Branch-and-Price.
  */
 public class Main {
-    public static void main(String[] args) {
+    static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         Path resourceRoot = Paths.get("src", "main", "resources");
 
         System.out.println("============================================================");
-        System.out.println("MKP FORMULATION HIERARCHY DEMONSTRATION");
+        System.out.println("BRANCH-AND-PRICE MKP SOLVER");
         System.out.println("============================================================\n");
-        System.out.println("Choose what to run:");
-        System.out.println("  1) Hardcoded example");
-        System.out.println("  2) Random instance from a resource directory");
-        System.out.println("  3) All instances in a specific resource directory");
-        System.out.println("  4) All instances in resources");
-        System.out.print("Selection [1-4, default 1]: ");
-        String choice = scanner.nextLine().trim();
-        if (choice.isEmpty()) choice = "1";
 
-        try {
-            switch (choice) {
-                case "2" -> runRandomInDirectory(scanner, resourceRoot);
-                case "3" -> runAllInDirectory(scanner, resourceRoot);
-                case "4" -> runAllInResources(resourceRoot);
-                case "1" -> {
-                    MKPInstance instance = buildExampleInstance();
-                    runDemo(instance, "Example");
+        while (true) {
+            System.out.println("Choose an action:");
+            System.out.println("  1) Solve hardcoded example");
+            System.out.println("  2) Pick an instance file from resources");
+            System.out.println("  3) Solve all instances in a resource directory");
+            System.out.println("  4) Solve a random instance in a resource directory");
+            System.out.println("  5) Solve all instances in resources");
+            System.out.println("  0) Exit");
+            System.out.print("Selection [0-5]: ");
+            String choice = scanner.nextLine().trim();
+            if (choice.isEmpty()) choice = "1";
+
+            try {
+                switch (choice) {
+                    case "1" -> solveExample();
+                    case "2" -> pickAndSolveSingle(scanner, resourceRoot);
+                    case "3" -> solveAllInDirectory(scanner, resourceRoot);
+                    case "4" -> solveRandomInDirectory(scanner, resourceRoot);
+                    case "5" -> solveAllInResources(resourceRoot);
+                    case "0" -> {
+                        System.out.println("Bye.");
+                        return;
+                    }
+                    default -> System.out.println("Unknown option.");
                 }
-                default -> {
-                    System.out.println("Unknown choice, running example.\n");
-                    MKPInstance instance = buildExampleInstance();
-                    runDemo(instance, "Example");
-                }
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
             }
-        } catch (IOException e) {
-            System.out.println("I/O error while reading resources: " + e.getMessage());
+            System.out.println();
         }
     }
 
-    // ========== Demo Runner ==========
+    // ========== Actions ==========
 
-    private static void runDemo(MKPInstance instance, String label) {
-        System.out.println("============================================================");
-        System.out.printf("Running demo for: %s%n", label);
-        System.out.println("============================================================\n");
-
-        // Display instance
-        System.out.println(instance.toDetailedString());
-        System.out.println();
-        System.out.println(instance.toTable());
-        System.out.println();
-
-        // Classic formulation
-        System.out.println("============================================================");
-        System.out.println("CLASSIC FORMULATION");
-        System.out.println("============================================================\n");
-
-        ClassicFormulation classic = new ClassicFormulation(instance);
-        System.out.println(classic.toMathematicalString());
-
-        ClassicSolution classicSol = new ClassicSolution(instance.getNumKnapsacks(), instance.getNumItems());
-        if (instance.getNumItems() >= 2 && instance.getNumKnapsacks() >= 2) {
-            classicSol.assignItem(0, 0);
-            classicSol.assignItem(0, instance.getNumItems() - 1);
-            classicSol.assignItem(1, 1);
-        }
-
-        System.out.println("Sample Solution:");
-        System.out.println(classicSol.toDetailedString(instance));
-        System.out.println("Objective: " + classic.computeObjectiveValue(classicSol));
-        System.out.println("Feasible: " + classic.isFeasible(classicSol));
-        System.out.println();
-
-        // L2 formulation
-        System.out.println("============================================================");
-        System.out.println("L2 RELAXED FORMULATION");
-        System.out.println("============================================================\n");
-
-        L2RelaxedFormulation l2 = classic.toL2Formulation();
-        System.out.println(l2.toMathematicalString());
-
-        L2Solution l2Sol = L2Solution.fromClassicSolution(classicSol, instance.getNumItems());
-        System.out.println("Converted L2 Solution:");
-        System.out.println(l2Sol.toItemSelectionString());
-        System.out.println(l2Sol.toAssignmentString());
-        System.out.println("L2 Objective: " + l2.computeObjectiveValue(l2Sol));
-        System.out.println("L2 Feasible: " + l2.isFeasible(l2Sol));
-        System.out.println();
-
-        // DW + column generation
-        System.out.println("============================================================");
-        System.out.println("DANTZIG-WOLFE MASTER FORMULATION");
-        System.out.println("============================================================\n");
-
-        DantzigWolfeMaster master = l2.toDantzigWolfeFormulation();
-
-        System.out.println("Seeding initial patterns (Phase 1)...");
-        PatternInitializer.initialize(master);
-
-        System.out.println(master.toStructureString());
-        System.out.println();
-
-        System.out.println("Running column generation...");
-        ColumnGeneration cg = new ColumnGeneration(master, new ORToolsSolver());
-        CGParameters params = new CGParameters().setMaxIterations(200).setVerbose(true);
-        CGResult cgResult = cg.solve(params);
-
-        System.out.println("\nColumn Generation Result:");
-        System.out.println("  Status: " + cgResult.getStatus());
-        System.out.println("  Iterations: " + cgResult.getIterations());
-        System.out.println("  Patterns added: " + cgResult.getPatternsAdded());
-        System.out.println("  Objective: " + cgResult.getObjectiveValue());
-
-        if (cgResult.getDwSolution() != null) {
-            System.out.println("\nFinal DW Solution:");
-            System.out.println(master.visualizeSolution(cgResult.getDwSolution()));
-
-            L2Solution l2FromDW = cgResult.getL2Solution();
-            System.out.println("Derived L2 Solution (from DW):");
-            System.out.println(l2FromDW.toItemSelectionString());
-            System.out.println(l2FromDW.toAssignmentString());
-            System.out.println("L2 objective: " + l2.computeObjectiveValue(l2FromDW));
-
-            if (l2FromDW.isInteger()) {
-                ClassicSolution classicFromDW = l2FromDW.toClassicSolution();
-                System.out.println("\nConverted Classic Solution:");
-                System.out.println(classicFromDW.toDetailedString(instance));
-                System.out.println("Classic objective: " + classic.computeObjectiveValue(classicFromDW));
-            } else {
-                System.out.println("\nDerived L2 solution is fractional; skipping classic conversion.");
-            }
-        }
-
-        System.out.println("\n============================================================");
-        System.out.println("DEMONSTRATION COMPLETE");
-        System.out.println("============================================================\n");
+    private static void solveExample() throws InvalidInstanceException {
+        MKPInstance instance = buildExampleInstance();
+        runBP(instance, "Example");
     }
 
-    // ========== CLI helpers ==========
-
-    private static void runRandomInDirectory(Scanner scanner, Path root) throws IOException {
+    private static void pickAndSolveSingle(Scanner scanner, Path root) throws IOException {
         Path dir = promptForDirectory(scanner, root);
         List<Path> files = listInstanceFiles(dir);
         if (files.isEmpty()) {
-            System.out.println("No instance files found in " + dir);
+            System.out.println("No instances found in " + dir);
+            return;
+        }
+        System.out.println("Instances in " + dir + ":");
+        for (int i = 0; i < files.size(); i++) {
+            System.out.printf("  %2d) %s%n", i + 1, dir.relativize(files.get(i)));
+        }
+        System.out.print("Select file [1-" + files.size() + ", default 1]: ");
+        String input = scanner.nextLine().trim();
+        int idx = 0;
+        try {
+            if (!input.isEmpty()) {
+                idx = Math.max(0, Math.min(files.size() - 1, Integer.parseInt(input) - 1));
+            }
+        } catch (NumberFormatException ignored) {
+        }
+        runFromFile(files.get(idx));
+    }
+
+    private static void solveAllInDirectory(Scanner scanner, Path root) throws IOException {
+        Path dir = promptForDirectory(scanner, root);
+        List<Path> files = listInstanceFiles(dir);
+        if (files.isEmpty()) {
+            System.out.println("No instances found in " + dir);
+            return;
+        }
+        for (Path p : files) {
+            runFromFile(p);
+        }
+    }
+
+    private static void solveRandomInDirectory(Scanner scanner, Path root) throws IOException {
+        Path dir = promptForDirectory(scanner, root);
+        List<Path> files = listInstanceFiles(dir);
+        if (files.isEmpty()) {
+            System.out.println("No instances found in " + dir);
             return;
         }
         Path chosen = files.get(ThreadLocalRandom.current().nextInt(files.size()));
@@ -166,11 +115,10 @@ public class Main {
         runFromFile(chosen);
     }
 
-    private static void runAllInDirectory(Scanner scanner, Path root) throws IOException {
-        Path dir = promptForDirectory(scanner, root);
-        List<Path> files = listInstanceFiles(dir);
+    private static void solveAllInResources(Path root) throws IOException {
+        List<Path> files = listInstanceFiles(root);
         if (files.isEmpty()) {
-            System.out.println("No instance files found in " + dir);
+            System.out.println("No instances found under " + root);
             return;
         }
         for (Path p : files) {
@@ -178,41 +126,46 @@ public class Main {
         }
     }
 
-    private static void runAllInResources(Path root) throws IOException {
-        List<Path> files = listInstanceFiles(root);
-        if (files.isEmpty()) {
-            System.out.println("No instance files found in resources.");
-            return;
-        }
-        for (Path p : files) {
-            runFromFile(p);
-        }
-    }
+    // ========== Helpers ==========
 
     private static void runFromFile(Path file) {
         try {
-            MKPInstance inst = InstanceReader.readFromFile(file.toString());
-            runDemo(inst, file.toString());
+            MKPInstance instance = InstanceReader.readFromFile(file.toString());
+            runBP(instance, file.toString());
         } catch (Exception e) {
-            System.out.println("Failed to run instance " + file + ": " + e.getMessage());
+            System.out.println("Failed to solve " + file + ": " + e.getMessage());
+        }
+    }
+
+    private static void runBP(MKPInstance instance, String label) {
+        System.out.printf("%n--- Solving %s ---%n", label);
+        BranchAndPrice solver = new BranchAndPrice(instance)
+                .setVerbose(true)
+                .setMaxNodes(1000)
+                .setGapTolerance(0.01); // 1% gap tolerance
+
+        BPResult result = solver.solve();
+
+        System.out.println("Result: " + result);
+        if (result.hasSolution()) {
+            ClassicSolution sol = result.solution();
+            System.out.println(sol.toDetailedString(instance));
         }
     }
 
     private static Path promptForDirectory(Scanner scanner, Path root) throws IOException {
         List<Path> dirs = listResourceDirectories(root);
-        if (dirs.isEmpty()) {
-            throw new IOException("No resource directories found under " + root);
-        }
-        System.out.println("Available resource directories:");
+        if (dirs.isEmpty()) throw new IOException("No resource directories under " + root);
+        System.out.println("Available directories:");
         for (int i = 0; i < dirs.size(); i++) {
             System.out.printf("  %d) %s%n", i + 1, dirs.get(i).getFileName());
         }
-        System.out.print("Choose directory [1-" + dirs.size() + ", default 1]: ");
-        String dirChoice = scanner.nextLine().trim();
+        System.out.print("Select directory [1-" + dirs.size() + ", default 1]: ");
+        String input = scanner.nextLine().trim();
         int idx = 0;
         try {
-            if (!dirChoice.isEmpty()) {
-                idx = Math.max(0, Math.min(dirs.size() - 1, Integer.parseInt(dirChoice) - 1));
+            if (!input.isEmpty()) {
+                idx = Math.max(0, Math.min(dirs.size() - 1, Integer.parseInt(input) - 1));
             }
         } catch (NumberFormatException ignored) {
         }
@@ -241,7 +194,7 @@ public class Main {
         }
     }
 
-    private static MKPInstance buildExampleInstance() {
+    private static MKPInstance buildExampleInstance() throws InvalidInstanceException {
         String content = """
                 2
                 5
@@ -253,10 +206,6 @@ public class Main {
                 2\t5
                 1\t4
                 """;
-        try {
-            return InstanceReader.parseFromString(content, "example");
-        } catch (InvalidInstanceException e) {
-            throw new RuntimeException("Failed to build example instance", e);
-        }
+        return InstanceReader.parseFromString(content, "example");
     }
 }
