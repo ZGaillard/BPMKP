@@ -2,7 +2,7 @@ package ca.udem.gaillarz.formulation;
 
 import ca.udem.gaillarz.model.Item;
 import ca.udem.gaillarz.model.MKPInstance;
-import ca.udem.gaillarz.solver.KnapsackSolver;
+import ca.udem.gaillarz.solver.knapsack.KnapsackSolver;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,7 +43,7 @@ public class PatternGenerator {
 
     public List<Pattern> generateInitialPatternsPI(int knapsackId) {
         List<Pattern> patterns = new ArrayList<>();
-        int capacity = instance.getKnapsack(knapsackId).getCapacity();
+        int capacity = instance.getKnapsack(knapsackId).capacity();
 
         patterns.addAll(generateSingleItemPatterns(capacity));
         patterns.addAll(generateGreedyPatterns(capacity, 3));
@@ -62,7 +62,7 @@ public class PatternGenerator {
         List<Pattern> patterns = new ArrayList<>();
         for (int j = 0; j < instance.getNumItems(); j++) {
             Item item = instance.getItem(j);
-            if (item.getWeight() <= capacity) {
+            if (item.weight() <= capacity) {
                 patterns.add(Pattern.singleItem(j, instance));
             }
         }
@@ -78,12 +78,12 @@ public class PatternGenerator {
 
         if (numVariants > 1) {
             List<Item> byProfit = new ArrayList<>(instance.getItems());
-            byProfit.sort((a, b) -> Integer.compare(b.getProfit(), a.getProfit()));
+            byProfit.sort((a, b) -> Integer.compare(b.profit(), a.profit()));
             patterns.add(greedyPack(byProfit, capacity));
         }
         if (numVariants > 2) {
             List<Item> byWeight = new ArrayList<>(instance.getItems());
-            byWeight.sort(Comparator.comparingInt(Item::getWeight));
+            byWeight.sort(Comparator.comparingInt(Item::weight));
             patterns.add(greedyPack(byWeight, capacity));
         }
         if (numVariants > 3) {
@@ -105,9 +105,9 @@ public class PatternGenerator {
         int used = 0;
 
         for (Item item : items) {
-            if (used + item.getWeight() <= capacity) {
-                selected.add(item.getId());
-                used += item.getWeight();
+            if (used + item.weight() <= capacity) {
+                selected.add(item.id());
+                used += item.weight();
             }
         }
 
@@ -130,7 +130,7 @@ public class PatternGenerator {
             for (int j = i + 1; j < n; j++) {
                 Item a = instance.getItem(i);
                 Item b = instance.getItem(j);
-                if (a.getWeight() + b.getWeight() <= capacity) {
+                if (a.weight() + b.weight() <= capacity) {
                     patterns.add(Pattern.fromItemIds(Set.of(i, j), instance));
                 }
             }
@@ -147,9 +147,9 @@ public class PatternGenerator {
         for (int i = 0; i < n; i++) {
             for (int j = i + 1; j < n; j++) {
                 for (int k = j + 1; k < n; k++) {
-                    int total = instance.getItem(i).getWeight()
-                            + instance.getItem(j).getWeight()
-                            + instance.getItem(k).getWeight();
+                    int total = instance.getItem(i).weight()
+                            + instance.getItem(j).weight()
+                            + instance.getItem(k).weight();
                     if (total <= capacity) {
                         patterns.add(Pattern.fromItemIds(Set.of(i, j, k), instance));
                     }

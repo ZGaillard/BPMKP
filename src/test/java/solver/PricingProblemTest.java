@@ -5,6 +5,8 @@ import ca.udem.gaillarz.formulation.Pattern;
 import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
+import ca.udem.gaillarz.solver.cg.PricingProblem;
+import ca.udem.gaillarz.solver.cg.PricingResult;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,9 +41,9 @@ class PricingProblemTest {
 
         PricingResult result = pricing.solveForP0(duals);
         assertNotNull(result);
-        assertTrue(result.isP0());
-        assertTrue(result.getReducedCost() > 0.0);
-        Pattern pattern = result.getPattern();
+        assertTrue(result.p0());
+        assertTrue(result.reducedCost() > 0.0);
+        Pattern pattern = result.pattern();
         assertFalse(pattern.isEmpty());
     }
 
@@ -58,8 +60,8 @@ class PricingProblemTest {
         PricingResult result = pricing.solveForPI(0, duals);
         assertNotNull(result);
         assertTrue(result.isPI());
-        assertEquals(0, result.getPoolIndex());
-        assertTrue(result.getReducedCost() > 0.0);
+        assertEquals(0, result.poolIndex());
+        assertTrue(result.reducedCost() > 0.0);
     }
 
     @Test

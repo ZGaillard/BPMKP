@@ -4,6 +4,7 @@ import ca.udem.gaillarz.formulation.Pattern;
 import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
+import ca.udem.gaillarz.solver.bp.BranchNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;

@@ -4,9 +4,9 @@ import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
 import org.junit.jupiter.api.Test;
-import solver.LPSolution;
-import solver.ORToolsSolver;
-import solver.SolutionStatus;
+import ca.udem.gaillarz.solver.lp.LPSolution;
+import ca.udem.gaillarz.solver.lp.ORToolsSolver;
+import ca.udem.gaillarz.solver.lp.SolutionStatus;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,7 +35,7 @@ class DWMasterLPBuilderTest {
         ORToolsSolver solver = new ORToolsSolver();
         LPSolution lpSol = solver.solve(lp);
 
-        assertTrue(lpSol.getStatus() == SolutionStatus.OPTIMAL || lpSol.getStatus() == SolutionStatus.FEASIBLE);
+        assertTrue(lpSol.status() == SolutionStatus.OPTIMAL || lpSol.status() == SolutionStatus.FEASIBLE);
 
         DWSolution dwSol = builder.extractDWSolution(lpSol, lp);
         assertNotNull(dwSol);

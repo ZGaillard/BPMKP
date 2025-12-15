@@ -4,6 +4,11 @@ import ca.udem.gaillarz.formulation.*;
 import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
+import ca.udem.gaillarz.solver.cg.CGParameters;
+import ca.udem.gaillarz.solver.cg.CGResult;
+import ca.udem.gaillarz.solver.cg.CGStatus;
+import ca.udem.gaillarz.solver.cg.ColumnGeneration;
+import ca.udem.gaillarz.solver.lp.ORToolsSolver;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -42,14 +47,14 @@ class ColumnGenerationTest {
         CGParameters params = new CGParameters().setMaxIterations(50).setVerbose(false);
         CGResult result = cg.solve(params);
 
-        assertTrue(result.getStatus() == CGStatus.OPTIMAL
-                || result.getStatus() == CGStatus.ITERATION_LIMIT
-                || result.getStatus() == CGStatus.TIME_LIMIT);
-        assertTrue(result.getIterations() > 0);
-        assertTrue(result.getObjectiveHistory().size() > 0);
+        assertTrue(result.status() == CGStatus.OPTIMAL
+                || result.status() == CGStatus.ITERATION_LIMIT
+                || result.status() == CGStatus.TIME_LIMIT);
+        assertTrue(result.iterations() > 0);
+        assertTrue(!result.objectiveHistory().isEmpty());
 
         // Objective history should be non-decreasing (within tolerance)
-        List<Double> history = result.getObjectiveHistory();
+        List<Double> history = result.objectiveHistory();
         for (int i = 1; i < history.size(); i++) {
             assertTrue(history.get(i) + 1e-6 >= history.get(i - 1));
         }

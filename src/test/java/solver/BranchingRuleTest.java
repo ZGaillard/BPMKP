@@ -1,6 +1,9 @@
 package solver;
 
 import ca.udem.gaillarz.formulation.L2Solution;
+import ca.udem.gaillarz.solver.bp.BranchNode;
+import ca.udem.gaillarz.solver.bp.BranchingRule;
+import ca.udem.gaillarz.solver.bp.BranchingStrategy;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

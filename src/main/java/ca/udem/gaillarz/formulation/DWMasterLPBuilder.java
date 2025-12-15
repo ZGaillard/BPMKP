@@ -1,14 +1,14 @@
 package ca.udem.gaillarz.formulation;
 
 import ca.udem.gaillarz.model.MKPInstance;
-import solver.*;
+import ca.udem.gaillarz.solver.lp.*;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Builds an LP for the DW master formulation and extracts solutions/duals.
- *
+ * <p>
  * UPDATED: Works with PatternVariable for content-based pattern identification.
  */
 public class DWMasterLPBuilder {
@@ -21,11 +21,11 @@ public class DWMasterLPBuilder {
 
     /**
      * Build LP relaxation of DW master.
-     *
+     * <p>
      * Variables:
      * - y_a for each pattern in each pool (continuous [0,1])
      * - s_j for each item (continuous [0,1])
-     *
+     * <p>
      * Constraints:
      * - Item consistency (29): Σ_{a∈P_0} a_j*y_a ≤ Σ_i Σ_{a∈P_i} a_j*y_a + s_j
      * - Pattern selection (30): Σ_{a∈P_i} y_a = 1 for each pool
@@ -74,7 +74,7 @@ public class DWMasterLPBuilder {
 
         // Dual cut penalty
         for (int j = 0; j < instance.getNumItems(); j++) {
-            lp.setObjectiveCoefficient(sVars.get(j), -instance.getItem(j).getProfit());
+            lp.setObjectiveCoefficient(sVars.get(j), -instance.getItem(j).profit());
         }
 
         // ========== Constraints ==========
@@ -130,7 +130,7 @@ public class DWMasterLPBuilder {
         if (Double.isFinite(master.getUpperBound())) {
             Constraint conUB = lp.addConstraint("upper_bound", ConstraintSense.LE, master.getUpperBound());
             for (int j = 0; j < instance.getNumItems(); j++) {
-                double profit = instance.getItem(j).getProfit();
+                double profit = instance.getItem(j).profit();
                 for (Pattern p : master.getPatternsP0()) {
                     if (p.containsItem(j)) {
                         PatternVariable pv = PatternVariable.forP0(p);

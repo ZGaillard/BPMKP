@@ -1,5 +1,8 @@
 package solver;
 
+import ca.udem.gaillarz.solver.lp.Constraint;
+import ca.udem.gaillarz.solver.lp.ConstraintSense;
+import ca.udem.gaillarz.solver.lp.Variable;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;

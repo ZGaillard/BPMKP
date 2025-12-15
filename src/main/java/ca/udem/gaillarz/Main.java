@@ -4,8 +4,8 @@ import ca.udem.gaillarz.formulation.ClassicSolution;
 import ca.udem.gaillarz.io.InstanceReader;
 import ca.udem.gaillarz.io.InvalidInstanceException;
 import ca.udem.gaillarz.model.MKPInstance;
-import solver.BPResult;
-import solver.BranchAndPrice;
+import ca.udem.gaillarz.solver.bp.BPResult;
+import ca.udem.gaillarz.solver.bp.BranchAndPrice;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -65,7 +65,8 @@ public class Main {
 
     private static void solveExample() throws InvalidInstanceException {
         MKPInstance instance = buildExampleInstance();
-        runBP(instance, "Example");
+        boolean verbose = askVerbose(new Scanner(System.in));
+        runBP(instance, "Example", verbose);
     }
 
     private static void pickAndSolveSingle(Scanner scanner, Path root) throws IOException {
@@ -75,6 +76,7 @@ public class Main {
             System.out.println("No instances found in " + dir);
             return;
         }
+        boolean verbose = askVerbose(scanner);
         System.out.println("Instances in " + dir + ":");
         for (int i = 0; i < files.size(); i++) {
             System.out.printf("  %2d) %s%n", i + 1, dir.relativize(files.get(i)));
@@ -88,7 +90,7 @@ public class Main {
             }
         } catch (NumberFormatException ignored) {
         }
-        runFromFile(files.get(idx));
+        runFromFile(files.get(idx), verbose);
     }
 
     private static void solveAllInDirectory(Scanner scanner, Path root) throws IOException {
@@ -98,8 +100,9 @@ public class Main {
             System.out.println("No instances found in " + dir);
             return;
         }
+        boolean verbose = askVerbose(scanner);
         for (Path p : files) {
-            runFromFile(p);
+            runFromFile(p, verbose);
         }
     }
 
@@ -110,9 +113,10 @@ public class Main {
             System.out.println("No instances found in " + dir);
             return;
         }
+        boolean verbose = askVerbose(scanner);
         Path chosen = files.get(ThreadLocalRandom.current().nextInt(files.size()));
         System.out.println("Randomly selected: " + chosen);
-        runFromFile(chosen);
+        runFromFile(chosen, verbose);
     }
 
     private static void solveAllInResources(Path root) throws IOException {
@@ -121,26 +125,27 @@ public class Main {
             System.out.println("No instances found under " + root);
             return;
         }
+        boolean verbose = askVerbose(new Scanner(System.in));
         for (Path p : files) {
-            runFromFile(p);
+            runFromFile(p, verbose);
         }
     }
 
     // ========== Helpers ==========
 
-    private static void runFromFile(Path file) {
+    private static void runFromFile(Path file, boolean verbose) {
         try {
             MKPInstance instance = InstanceReader.readFromFile(file.toString());
-            runBP(instance, file.toString());
+            runBP(instance, file.toString(), verbose);
         } catch (Exception e) {
             System.out.println("Failed to solve " + file + ": " + e.getMessage());
         }
     }
 
-    private static void runBP(MKPInstance instance, String label) {
+    private static void runBP(MKPInstance instance, String label, boolean verbose) {
         System.out.printf("%n--- Solving %s ---%n", label);
         BranchAndPrice solver = new BranchAndPrice(instance)
-                .setVerbose(true)
+                .setVerbose(verbose)
                 .setMaxNodes(1000)
                 .setGapTolerance(0.01); // 1% gap tolerance
 
@@ -170,6 +175,12 @@ public class Main {
         } catch (NumberFormatException ignored) {
         }
         return dirs.get(idx);
+    }
+
+    private static boolean askVerbose(Scanner scanner) {
+        System.out.print("Enable verbose output? [y/N]: ");
+        String in = scanner.nextLine().trim().toLowerCase();
+        return in.startsWith("y");
     }
 
     private static List<Path> listResourceDirectories(Path root) throws IOException {

@@ -1,5 +1,6 @@
 package solver;
 
+import ca.udem.gaillarz.solver.lp.*;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,7 +25,7 @@ class ORToolsSolverTest {
         LPSolution sol = solver.solve(lp);
 
         assertTrue(sol.isOptimal(), "LP should be optimal");
-        assertEquals(10.0, sol.getObjectiveValue(), 1e-6);
+        assertEquals(10.0, sol.objectiveValue(), 1e-6);
         assertEquals(0.0, sol.getPrimalValue(x), 1e-6);
         assertEquals(5.0, sol.getPrimalValue(y), 1e-6);
         // dual of c1 should be 2.0 for this LP
