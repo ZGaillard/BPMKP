@@ -39,7 +39,8 @@ public class BenchmarkRunner {
         tracker.start(setName, set.size());
         List<BenchmarkResult> results = new ArrayList<>();
 
-        for (int i = 0; i < set.size(); i++) {
+        int limit = Math.min(set.size(), config.getMaxInstancesPerSet());
+        for (int i = 0; i < limit; i++) {
             String name = set.getInstanceName(i);
             tracker.step(name);
             BenchmarkResult res = solveInstance(set.getInstance(i), name, setName);
@@ -55,6 +56,7 @@ public class BenchmarkRunner {
         String base = config.getOutputDirectory() + "/" + setName;
         writer.writeCsv(results, base + "_results.csv");
         writer.writeJsonSummary(summary, base + "_summary.json");
+        writer.writeSolutions(results, base + "_solutions.txt");
         return summary;
     }
 
@@ -88,11 +90,22 @@ public class BenchmarkRunner {
         }
         List<String> names = new ArrayList<>();
         List<MKPInstance> instances = new ArrayList<>();
+        Set<String> filters = new HashSet<>();
+        for (String f : config.getInstanceFilter()) {
+            filters.add(f.toLowerCase());
+        }
+        int limit = config.getMaxInstancesPerSet();
         for (Path f : files) {
+            if (!filters.isEmpty() && !filters.contains(f.getFileName().toString().toLowerCase())) {
+                continue;
+            }
             try {
                 MKPInstance inst = InstanceReader.readFromFile(f.toString());
                 names.add(f.getFileName().toString());
                 instances.add(inst);
+                if (names.size() >= limit) {
+                    break;
+                }
             } catch (Exception e) {
                 System.err.println("Failed to load " + f + ": " + e.getMessage());
             }

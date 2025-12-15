@@ -3,6 +3,7 @@ package ca.udem.gaillarz.benchmark;
 import ca.udem.gaillarz.model.MKPInstance;
 import ca.udem.gaillarz.solver.bp.BPResult;
 import ca.udem.gaillarz.solver.bp.BPStatus;
+import ca.udem.gaillarz.formulation.ClassicSolution;
 
 /**
  * Result wrapper for a single benchmarked instance.
@@ -21,6 +22,7 @@ public class BenchmarkResult {
     private final boolean hasSolution;
     private final boolean optimal;
     private final String error;
+    private final ClassicSolution solution;
 
     public BenchmarkResult(String instanceName, String setName, MKPInstance instance, BPResult result) {
         this.instanceName = instanceName;
@@ -36,6 +38,7 @@ public class BenchmarkResult {
         this.hasSolution = result.solution() != null;
         this.optimal = status == BPStatus.OPTIMAL || gap <= 1e-4;
         this.error = null;
+        this.solution = result.solution();
     }
 
     private BenchmarkResult(String instanceName, String setName, String error) {
@@ -52,6 +55,7 @@ public class BenchmarkResult {
         this.hasSolution = false;
         this.optimal = false;
         this.error = error;
+        this.solution = null;
     }
 
     public static BenchmarkResult error(String instanceName, String setName, String message) {
@@ -127,5 +131,22 @@ public class BenchmarkResult {
 
     public String error() {
         return error;
+    }
+
+    public ClassicSolution solution() {
+        return solution;
+    }
+
+    /**
+     * Compact string of the assignment per knapsack (e.g., KS0:[1,3];KS1:[0]).
+     */
+    public String assignmentSummary() {
+        if (solution == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < numKnapsacks; i++) {
+            if (i > 0) sb.append("; ");
+            sb.append("KS").append(i).append(":").append(solution.getItemsInKnapsack(i));
+        }
+        return sb.toString();
     }
 }

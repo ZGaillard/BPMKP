@@ -13,7 +13,7 @@ import java.util.List;
  */
 public record CGResult(CGStatus status, DWSolution dwSolution, L2Solution l2Solution, DualValues dualValues,
                        double objectiveValue, int iterations, int patternsAdded, List<Double> objectiveHistory,
-                       long solveTimeMs) {
+                       long solveTimeMs, long lpBuildTimeMs, long lpSolveTimeMs, long pricingTimeMs) {
     public CGResult(CGStatus status,
                     DWSolution dwSolution,
                     L2Solution l2Solution,
@@ -22,7 +22,10 @@ public record CGResult(CGStatus status, DWSolution dwSolution, L2Solution l2Solu
                     int iterations,
                     int patternsAdded,
                     List<Double> objectiveHistory,
-                    long solveTimeMs) {
+                    long solveTimeMs,
+                    long lpBuildTimeMs,
+                    long lpSolveTimeMs,
+                    long pricingTimeMs) {
         this.status = status;
         this.dwSolution = dwSolution;
         this.l2Solution = l2Solution;
@@ -32,6 +35,9 @@ public record CGResult(CGStatus status, DWSolution dwSolution, L2Solution l2Solu
         this.patternsAdded = patternsAdded;
         this.objectiveHistory = new ArrayList<>(objectiveHistory);
         this.solveTimeMs = solveTimeMs;
+        this.lpBuildTimeMs = lpBuildTimeMs;
+        this.lpSolveTimeMs = lpSolveTimeMs;
+        this.pricingTimeMs = pricingTimeMs;
     }
 
     public boolean isOptimal() {
@@ -45,7 +51,8 @@ public record CGResult(CGStatus status, DWSolution dwSolution, L2Solution l2Solu
 
     @Override
     public String toString() {
-        return String.format("CGResult(status=%s, obj=%.3f, iter=%d, added=%d, time=%.2fs)",
-                status, objectiveValue, iterations, patternsAdded, solveTimeMs / 1000.0);
+        return String.format("CGResult(status=%s, obj=%.3f, iter=%d, added=%d, time=%.2fs, build=%.2fs, lp=%.2fs, pricing=%.2fs)",
+                status, objectiveValue, iterations, patternsAdded, solveTimeMs / 1000.0,
+                lpBuildTimeMs / 1000.0, lpSolveTimeMs / 1000.0, pricingTimeMs / 1000.0);
     }
 }

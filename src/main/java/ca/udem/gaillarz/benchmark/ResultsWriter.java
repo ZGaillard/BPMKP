@@ -43,4 +43,18 @@ public class ResultsWriter {
             System.err.println("[JSON] Failed to write " + filepath + ": " + e.getMessage());
         }
     }
+
+    public void writeSolutions(List<BenchmarkResult> results, String filepath) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(filepath))) {
+            writer.println("# instance,set,objective,assignment");
+            for (BenchmarkResult r : results) {
+                if (r.solution() == null) continue;
+                writer.printf("%s,%s,%.3f,%s%n",
+                        r.instanceName(), r.setName(), r.objective(), r.assignmentSummary());
+            }
+            System.out.println("[SOLUTIONS] Wrote " + filepath);
+        } catch (IOException e) {
+            System.err.println("[SOLUTIONS] Failed to write " + filepath + ": " + e.getMessage());
+        }
+    }
 }

@@ -1,0 +1,3 @@
+dataset,status,n,time_median,time_mean,nodes_median,optimal_rate
+SMALL,OPTIMAL,210,0.066,3.238752380952381,1.0,1.0
+SMALL,GAP_LIMIT,148,9.755500000000001,26.23343243243243,28.5,0.0

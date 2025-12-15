@@ -44,6 +44,11 @@ public class BranchAndPrice {
     private int nodesInfeasible;
     private int integralNodes;
     private long startTime;
+    private long totalCGTimeMs;
+    private long totalLpBuildTimeMs;
+    private long totalLpSolveTimeMs;
+    private long totalPricingTimeMs;
+    private long totalSatTimeMs;
 
     public BranchAndPrice(MKPInstance instance) {
         this(instance, new ORToolsSolver());
@@ -103,6 +108,7 @@ public class BranchAndPrice {
         queue.add(root);
 
         nodesProcessed = nodesPruned = nodesInfeasible = integralNodes = 0;
+        totalCGTimeMs = totalLpBuildTimeMs = totalLpSolveTimeMs = totalPricingTimeMs = totalSatTimeMs = 0L;
 
         while (!queue.isEmpty()) {
             if (nodesProcessed >= maxNodes) {
@@ -148,6 +154,10 @@ public class BranchAndPrice {
             cg.setBranchingConstraints(node.getForbiddenItems(), node.getRequiredItems());
             CGParameters cgParams = new CGParameters().setVerbose(verbose);
             CGResult cgResult = cg.solve(cgParams);
+            totalCGTimeMs += cgResult.solveTimeMs();
+            totalLpBuildTimeMs += cgResult.lpBuildTimeMs();
+            totalLpSolveTimeMs += cgResult.lpSolveTimeMs();
+            totalPricingTimeMs += cgResult.pricingTimeMs();
 
             if (cgResult.status() != CGStatus.OPTIMAL) {
                 nodesInfeasible++;
@@ -220,6 +230,7 @@ public class BranchAndPrice {
             // t is integer but x is fractional/invalid: run VSBPP feasibility
             if (integerT && !integerX) {
                 VSBPPSATResult feas = feasibilityChecker.checkFeasibility(instance, l2Sol, 2000);
+                totalSatTimeMs += (long) feas.solveTimeMs();
                 if (feas.status() == VSBPPSATStatus.FEASIBLE && feas.itemToBin() != null) {
                     integralNodes++;
                     ClassicSolution classicSol = new ClassicSolution(instance.getNumKnapsacks(), instance.getNumItems());
@@ -311,7 +322,8 @@ public class BranchAndPrice {
         }
 
         return new BPResult(finalStatus, bestSolution, globalLB, globalUB,
-                computeGap(), nodesProcessed, nodesPruned, integralNodes, totalTime);
+                computeGap(), nodesProcessed, nodesPruned, integralNodes, totalTime,
+                totalCGTimeMs, totalLpBuildTimeMs, totalLpSolveTimeMs, totalPricingTimeMs, totalSatTimeMs);
     }
 
     /**

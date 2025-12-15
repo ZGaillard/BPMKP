@@ -35,9 +35,8 @@ public class ColumnGeneration {
         this.totalTimeMs = 0L;
     }
 
-    public ColumnGeneration setBranchingConstraints(Set<Integer> forbiddenItems, Set<Integer> requiredItems) {
+    public void setBranchingConstraints(Set<Integer> forbiddenItems, Set<Integer> requiredItems) {
         this.pricingProblem.setBranchingConstraints(forbiddenItems, requiredItems);
-        return this;
     }
 
     public CGResult solve() {
@@ -54,35 +53,46 @@ public class ColumnGeneration {
         iterations = 0;
         patternsAdded = 0;
         bestObjective = Double.NEGATIVE_INFINITY;
+        long lpBuildTimeMs = 0L;
+        long lpSolveTimeMs = 0L;
+        long pricingTimeMs = 0L;
 
         while (iterations < params.getMaxIterations()) {
             long elapsed = System.currentTimeMillis() - start;
             if (elapsed > params.getTimeLimitMs()) {
                 totalTimeMs = elapsed;
                 return new CGResult(CGStatus.TIME_LIMIT, null, null, null,
-                        bestObjective, iterations, patternsAdded, objectiveHistory, totalTimeMs);
+                        bestObjective, iterations, patternsAdded, objectiveHistory, totalTimeMs,
+                        lpBuildTimeMs, lpSolveTimeMs, pricingTimeMs);
             }
 
             iterations++;
 
             // 1) Build and solve RMP
+            long buildStart = System.currentTimeMillis();
             DWMasterLPBuilder builder = new DWMasterLPBuilder(master);
             LinearProgram lp = builder.buildLP();
             // Apply no-good cuts if available
             if (master instanceof ca.udem.gaillarz.solver.bp.SupportsNoGoodCuts ng) {
                 ng.getCutManager().addCutsToLP(lp, master.getPatternsP0());
             }
+            lpBuildTimeMs += System.currentTimeMillis() - buildStart;
+
+            long lpSolveStart = System.currentTimeMillis();
             LPSolution lpSolution = lpSolver.solve(lp);
+            lpSolveTimeMs += System.currentTimeMillis() - lpSolveStart;
 
             if (lpSolution.isUnbounded()) {
                 totalTimeMs = System.currentTimeMillis() - start;
                 return new CGResult(CGStatus.UNBOUNDED, null, null, null,
-                        Double.POSITIVE_INFINITY, iterations, patternsAdded, objectiveHistory, totalTimeMs);
+                        Double.POSITIVE_INFINITY, iterations, patternsAdded, objectiveHistory, totalTimeMs,
+                        lpBuildTimeMs, lpSolveTimeMs, pricingTimeMs);
             }
             if (!lpSolution.isOptimal() && !lpSolution.isFeasible()) {
                 totalTimeMs = System.currentTimeMillis() - start;
                 return new CGResult(CGStatus.INFEASIBLE, null, null, null,
-                        Double.NaN, iterations, patternsAdded, objectiveHistory, totalTimeMs);
+                        Double.NaN, iterations, patternsAdded, objectiveHistory, totalTimeMs,
+                        lpBuildTimeMs, lpSolveTimeMs, pricingTimeMs);
             }
 
             double currentObj = lpSolution.objectiveValue();
@@ -97,7 +107,9 @@ public class ColumnGeneration {
             }
 
             // 3) Pricing
+            long pricingStart = System.currentTimeMillis();
             List<PricingResult> improving = pricingProblem.solveAll(dualValues);
+            pricingTimeMs += System.currentTimeMillis() - pricingStart;
             if (params.isVerbose()) {
                 logPricing(improving);
             }
@@ -108,7 +120,8 @@ public class ColumnGeneration {
                 L2Solution l2Solution = master.toL2Solution(dwSolution);
                 totalTimeMs = System.currentTimeMillis() - start;
                 return new CGResult(CGStatus.OPTIMAL, dwSolution, l2Solution, dualValues,
-                        currentObj, iterations, patternsAdded, objectiveHistory, totalTimeMs);
+                        currentObj, iterations, patternsAdded, objectiveHistory, totalTimeMs,
+                        lpBuildTimeMs, lpSolveTimeMs, pricingTimeMs);
             }
 
             // 5) Add new columns
@@ -163,13 +176,15 @@ public class ColumnGeneration {
                 L2Solution l2Solution = master.toL2Solution(dwSolution);
                 totalTimeMs = System.currentTimeMillis() - start;
                 return new CGResult(CGStatus.OPTIMAL, dwSolution, l2Solution, dualValues,
-                        currentObj, iterations, patternsAdded, objectiveHistory, totalTimeMs);
+                        currentObj, iterations, patternsAdded, objectiveHistory, totalTimeMs,
+                        lpBuildTimeMs, lpSolveTimeMs, pricingTimeMs);
             }
         }
 
         totalTimeMs = System.currentTimeMillis() - start;
         return new CGResult(CGStatus.ITERATION_LIMIT, null, null, null,
-                bestObjective, iterations, patternsAdded, objectiveHistory, totalTimeMs);
+                bestObjective, iterations, patternsAdded, objectiveHistory, totalTimeMs,
+                lpBuildTimeMs, lpSolveTimeMs, pricingTimeMs);
     }
 
     // Accessors

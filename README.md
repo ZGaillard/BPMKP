@@ -14,19 +14,31 @@ column generation, and a full branching loop backed by OR-Tools.
   console.
 - **Tests**: JUnit 5 coverage for formulations, column generation, and the solver glue in `src/test/java`.
 
+## Submission report highlights
+
+This README plus `benchmark_analysis.ipynb` form the report I’m submitting with the code. Headline results on the
+provided `SMALL` batch (`benchmark_results/SMALL_results.csv`):
+
+- 179 runs loaded; ~59% solved to proven optimality and the rest stopped on the gap limit with tiny residual gaps.
+- Runtime is light: median 0.65s, 90th percentile < 1s, with one visible outlier around 221s (captured in the plots).
+- Branching remains shallow (median 3 nodes, max 651), matching the design goal of strong root relaxations.
+- The notebook writes plots/tables to `analysis_out/` so they can be dropped straight into the report without rerun.
+- If I add FK_* datasets later, I’ll re-run the notebook and append them as “extended benchmarks.”
+
 Project structure (key paths):
 
 - `src/main/java/ca/udem/gaillarz/model/` – MKP data classes.
 - `src/main/java/ca/udem/gaillarz/io/` – Instance reader/validator.
 - `src/main/java/ca/udem/gaillarz/formulation/` – Classic/L2/DW formulations, patterns, conversions.
 - `src/main/java/ca/udem/gaillarz/solver/` – LP layer, column generation, branch-and-price, SAT checker.
-- `src/main/resources/` – Example instance files (excludes `readme.txt`).
+- `src/main/resources/` – Benchmark set instance files
 - `src/test/java/` – Unit tests.
 
 ## Prerequisites
 
 - Java 25
 - Maven 3.9+
+- JUnit 5 (included via Maven) (needed for tests only)
 - Internet access for Maven to download OR-Tools (`com.google.ortools:ortools-java`).
 
 ## Build, test, run
@@ -40,17 +52,17 @@ mvn test
 
 # launch CLI demo
 mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.Main
+
+# launch benchmark runner
+mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.benchmark.MainBenchmark
 ```
 
 ## CLI usage
 
 When the CLI starts you can:
 
-- `1` Solve a hardcoded toy instance.
-- `2` Pick one instance file from a chosen resources subdirectory.
-- `3` Solve all instances in a chosen resources subdirectory (prints a summary at the end).
-- `4` Solve a random instance in a chosen resources subdirectory.
-- `5` Solve all discovered instances under `src/main/resources` (prints a summary at the end).
+- `1` Pick one instance file from a chosen resources subdirectory.
+- `2` Solve all instances in a chosen resources subdirectory (prints a summary at the end).
 - `v` Toggle verbose logging on/off (persists across runs within the session).
 - `0` Exit.
 
@@ -60,7 +72,7 @@ Batch benchmark all provided instance sets (SMALL, FK_1..FK_4) with default limi
 `benchmark_results/`:
 
 ```bash
-mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.benchmark.MainBenchmarkQuick
+mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.benchmark.MainBenchmark
 ```
 
 ## Instance format

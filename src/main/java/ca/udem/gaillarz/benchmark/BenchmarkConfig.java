@@ -11,7 +11,9 @@ public class BenchmarkConfig {
     private long timeLimitSeconds = 600;      // 10 minutes per instance
     private int maxNodes = 10000;
     private boolean verbose = false;
-    private List<String> instanceSets = Arrays.asList("SMALL", "FK_1", "FK_2", "FK_3", "FK_4");
+    private int maxInstancesPerSet = Integer.MAX_VALUE;
+    private final List<String> instanceFilter = List.of(); // empty = all
+    private final List<String> instanceSets = Arrays.asList("SMALL", "FK_1", "FK_2", "FK_3", "FK_4");
     private String outputDirectory = "benchmark_results";
 
     public double getGapTolerance() {
@@ -50,13 +52,21 @@ public class BenchmarkConfig {
         return this;
     }
 
-    public List<String> getInstanceSets() {
-        return instanceSets;
+    public int getMaxInstancesPerSet() {
+        return maxInstancesPerSet;
     }
 
-    public BenchmarkConfig setInstanceSets(List<String> instanceSets) {
-        this.instanceSets = instanceSets;
+    public BenchmarkConfig setMaxInstancesPerSet(int maxInstancesPerSet) {
+        this.maxInstancesPerSet = maxInstancesPerSet;
         return this;
+    }
+
+    public List<String> getInstanceFilter() {
+        return instanceFilter;
+    }
+
+    public List<String> getInstanceSets() {
+        return instanceSets;
     }
 
     public String getOutputDirectory() {
