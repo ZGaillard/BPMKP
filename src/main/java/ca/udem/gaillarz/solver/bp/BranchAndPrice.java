@@ -2,6 +2,9 @@ package ca.udem.gaillarz.solver.bp;
 
 import ca.udem.gaillarz.formulation.*;
 import ca.udem.gaillarz.model.MKPInstance;
+import ca.udem.gaillarz.preprocessing.PreprocessingResult;
+import ca.udem.gaillarz.preprocessing.ReducedCostExtractor;
+import ca.udem.gaillarz.preprocessing.ReducedCostFixer;
 import ca.udem.gaillarz.solver.cg.CGParameters;
 import ca.udem.gaillarz.solver.cg.CGResult;
 import ca.udem.gaillarz.solver.cg.CGStatus;
@@ -13,10 +16,14 @@ import ca.udem.gaillarz.solver.vsbpp.VSBPPSATChecker;
 import ca.udem.gaillarz.solver.vsbpp.VSBPPSATResult;
 import ca.udem.gaillarz.solver.vsbpp.VSBPPSATStatus;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.List;
 
 /**
  * Branch-and-Price driver combining column generation and branching.
@@ -34,6 +41,7 @@ public class BranchAndPrice {
     private long timeLimitMs = Long.MAX_VALUE;
     private double gapTolerance = DEFAULT_GAP_TOLERANCE;
     private boolean verbose = true;
+    private boolean preprocessingEnabled = true;
     // Global state
     private double globalLB = 0.0;
     private double globalUB = Double.POSITIVE_INFINITY;
@@ -75,6 +83,11 @@ public class BranchAndPrice {
         return this;
     }
 
+    public BranchAndPrice setPreprocessing(boolean enable) {
+        this.preprocessingEnabled = enable;
+        return this;
+    }
+
     /**
      * Solve MKP using Branch-and-Price.
      */
@@ -95,8 +108,56 @@ public class BranchAndPrice {
         PatternInitializer.initialize(rootMaster);
         if (verbose) System.out.printf("[BAP] Initial patterns: %d%n%n", rootMaster.getTotalPatternCount());
 
+        // Solve root LP for bounds and preprocessing information
+        if (verbose) System.out.println("[BAP] Solving root LP relaxation...");
+        ColumnGeneration rootCG = new ColumnGeneration(rootMaster, lpSolver);
+        CGParameters rootParams = new CGParameters().setVerbose(verbose);
+        CGResult rootResult = rootCG.solve(rootParams);
+
+        if (rootResult.status() != CGStatus.OPTIMAL) {
+            if (verbose) {
+                System.out.println("[BAP] Root LP not optimal: " + rootResult.status());
+            }
+            long totalTime = System.currentTimeMillis() - startTime;
+            return new BPResult(BPStatus.ERROR, null, 0.0, Double.POSITIVE_INFINITY,
+                    1.0, 0, 0, 0, totalTime);
+        }
+
+        double rootBound = rootResult.objectiveValue();
+        globalUB = rootBound;
+        if (verbose) {
+            System.out.printf("[BAP] Root LP bound: %.2f%n", rootBound);
+        }
+
+        double heuristicLB = runGreedyHeuristic();
+        if (verbose) {
+            System.out.printf("[BAP] Heuristic LB: %.2f%n", heuristicLB);
+        }
+
+        Map<Integer, Integer> preprocessingFixings = new HashMap<>();
+        if (preprocessingEnabled && heuristicLB > 0 && rootResult.l2Solution() != null && rootResult.dualValues() != null) {
+            long prepStart = System.currentTimeMillis();
+            ReducedCostExtractor extractor = new ReducedCostExtractor(instance);
+            ReducedCostFixer fixer = new ReducedCostFixer(instance);
+
+            double[] reducedCosts = extractor.extractReducedCosts(rootResult.l2Solution(), rootResult.dualValues());
+            int fixed = fixer.fixByReducedCosts(rootBound, heuristicLB, reducedCosts);
+
+            if (fixed > 0) {
+                preprocessingFixings.putAll(fixer.getFixedItems());
+            }
+
+            double prepTime = (System.currentTimeMillis() - prepStart) / 1000.0;
+            if (verbose) {
+                PreprocessingResult prepResult = new PreprocessingResult(preprocessingFixings, instance.getNumItems(), prepTime);
+                System.out.println("[BAP] Preprocessing complete: " + prepResult);
+            }
+        }
+
         // Root node
         BranchNode root = new BranchNode();
+        root.setUpperBound(rootBound);
+        root.addFixings(preprocessingFixings);
         PriorityQueue<BranchNode> queue = new PriorityQueue<>(
                 Comparator.comparingDouble(BranchNode::getUpperBound).reversed()
         );
@@ -322,6 +383,42 @@ public class BranchAndPrice {
     private DantzigWolfeMaster createMasterForNode(DantzigWolfeMaster rootMaster, BranchNode node) {
         L2RelaxedFormulation l2 = new L2RelaxedFormulation(instance);
         return new DantzigWolfeFormulationWithPatterns(node, rootMaster, l2, cutManager);
+    }
+
+    /**
+     * Run a greedy heuristic to provide a quick feasible lower bound.
+     */
+    private double runGreedyHeuristic() {
+        List<Integer> items = new ArrayList<>();
+        for (int j = 0; j < instance.getNumItems(); j++) {
+            items.add(j);
+        }
+
+        items.sort((a, b) -> {
+            double ratioA = (double) instance.getItem(a).profit() / instance.getItem(a).weight();
+            double ratioB = (double) instance.getItem(b).profit() / instance.getItem(b).weight();
+            return Double.compare(ratioB, ratioA);
+        });
+
+        int[] remainingCapacity = new int[instance.getNumKnapsacks()];
+        for (int i = 0; i < instance.getNumKnapsacks(); i++) {
+            remainingCapacity[i] = instance.getKnapsack(i).capacity();
+        }
+
+        double totalProfit = 0.0;
+        for (int itemId : items) {
+            int weight = instance.getItem(itemId).weight();
+            int profit = instance.getItem(itemId).profit();
+            for (int i = 0; i < remainingCapacity.length; i++) {
+                if (remainingCapacity[i] >= weight) {
+                    remainingCapacity[i] -= weight;
+                    totalProfit += profit;
+                    break;
+                }
+            }
+        }
+
+        return totalProfit;
     }
 
     private double computeGap() {

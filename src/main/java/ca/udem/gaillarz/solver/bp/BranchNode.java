@@ -91,6 +91,33 @@ public class BranchNode {
         return Collections.unmodifiableMap(fixedItems);
     }
 
+    /**
+     * Add a fixing for an item (0 or 1). Existing consistent fixings are preserved.
+     */
+    public void addFixing(int itemId, int value) {
+        if (value != 0 && value != 1) {
+            throw new IllegalArgumentException("Fixing value must be 0 or 1");
+        }
+        Integer existing = fixedItems.get(itemId);
+        if (existing != null && existing != value) {
+            throw new IllegalStateException(
+                    "Item " + itemId + " already fixed to " + existing + "; cannot fix to " + value);
+        }
+        fixedItems.put(itemId, value);
+    }
+
+    /**
+     * Add multiple fixings at once.
+     */
+    public void addFixings(Map<Integer, Integer> fixings) {
+        if (fixings == null) {
+            return;
+        }
+        for (Map.Entry<Integer, Integer> entry : fixings.entrySet()) {
+            addFixing(entry.getKey(), entry.getValue());
+        }
+    }
+
     public boolean isItemFixed(int itemId) {
         return fixedItems.containsKey(itemId);
     }
