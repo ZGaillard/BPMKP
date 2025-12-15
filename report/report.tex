@@ -1,60 +1,385 @@
-\documentclass[11pt]{article}
-\usepackage[margin=1in]{geometry}
-\usepackage{booktabs}
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc} 
+
+\usepackage{graphicx}
+\graphicspath{{./images/}}
+
+\usepackage{enumitem}
+\usepackage{amsmath, amssymb}
+\usepackage{braket}
+
+\DeclareRobustCommand{\neswarrow}{%
+  \mathrel{\text{\ooalign{$\swarrow$\cr$\nearrow$}}}%
+}
+\DeclareRobustCommand{\nswarrow}{%
+  \mathrel{\text{\ooalign{$\searrow$\cr$\nwarrow$}}}%
+}
+
+\usepackage{newunicodechar}
+
+\usepackage{geometry}
+\geometry{left=25mm, top=25mm}
+
+% Réglages manuels précis pour marges et taille du texte
+\topmargin=-0.45in
+\evensidemargin=0in
+\oddsidemargin=0in
+\textwidth=6.5in
+\textheight=9.0in
+\headsep=0.25in
+
+\usepackage{listings}
+\usepackage{xcolor}
+
 \usepackage{array}
-\title{Branch-and-Price Multiple Knapsack Toolkit}
-\date{\today}
+\newcolumntype{C}{>{\(\displaystyle}c<{\)}@{}} 
+\newcolumntype{L}{>{\(\displaystyle}l<{\)}@{}} 
+\newcolumntype{R}{>{\(\displaystyle}r<{\)}@{}}
+
+\usepackage{mathtools}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+\usepackage{booktabs}
+
+\usepackage{tikz}
+\newcommand{\encerclerRouge}[1]{%
+    \tikz[baseline=(char.base)]\node[shape=circle,draw=red,inner sep=2pt] (char) {#1};}
+
+\usepackage{hyperref}
+
+% Configuration listings (UTF-8 + accents)
+\lstset{
+    inputencoding=utf8,
+    extendedchars=true,
+    literate=
+      {é}{{\'e}}1
+      {è}{{\`e}}1
+      {ê}{{\^e}}1
+      {à}{{\`a}}1
+      {ù}{{\`u}}1
+      {â}{{\^a}}1
+      {î}{{\^i}}1
+      {ô}{{\^o}}1
+      {û}{{\^u}}1
+      {ç}{{\c{c}}}1
+      {É}{{\'E}}1
+      {È}{{\`E}}1
+      {À}{{\`A}}1
+      {Ù}{{\`U}}1
+      {Â}{{\^A}}1
+      {Î}{{\^I}}1
+      {Ô}{{\^O}}1
+      {Û}{{\^U}}1,
+  language=Java,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{purple},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numbersep=5pt,
+  numberstyle=\tiny\color{gray},
+  columns=flexible
+}
+
+\newcommand{\op}[1]{\mathsf{#1}}
+
+\setlength{\parindent}{0pt}
+
+
 \begin{document}
-\maketitle
 
-\section{Overview}
-This codebase implements a branch-and-price solver for the Multiple Knapsack Problem (MKP) inspired by Lalonde et al.\ (2022). It provides classic and L2 formulations, a Dantzig--Wolfe master with column generation, and a branch-and-price loop with simple no-good cuts and a CP-SAT repair for fractional assignments. Benchmarks and plots are included for the SMALL and Falkenauer (FK) instance families.
 
-\section{Formulations and Algorithm}
+\begin{titlepage}
+\centering
+
+\rule{\textwidth}{0px}
+\vspace{15mm}
+
+\Huge{Branch-and-Price for the\\Multiple Knapsack Problem:\\Implementation Report} \\
+\vspace{10mm}
+\Large Méthodes de recherche opérationnelle \\
+IFT 6575
+
+\vspace{40mm}
+\large By \\ \vspace{3mm}
+Zakary Gaillard-Duchassin (20218333)\\
+
+\vspace{30mm}
+Presented to \\ \vspace{3mm}
+Utsav Sadana
+
+\vfill
+December 14, 2025 \\ \vspace{3mm}
+
+%Logo de l'Université de Montréal
+\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+
+\begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+%uncomment if require: \path (0,953); %set diagram left start at 0, and has height of 953
+
+%Shape: Arc [id:dp5019968439668502] 
+\draw  [draw opacity=0][line width=3.75]  (419.84,609.44) .. controls (419.84,609.44) and (419.84,609.44) .. (419.84,609.44) .. controls (419.84,605.88) and (422.19,602.99) .. (425.09,602.99) .. controls (427.99,602.99) and (430.33,605.88) .. (430.33,609.44) -- (425.09,609.44) -- cycle ; \draw  [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]  (419.84,609.44) .. controls (419.84,609.44) and (419.84,609.44) .. (419.84,609.44) .. controls (419.84,605.88) and (422.19,602.99) .. (425.09,602.99) .. controls (427.99,602.99) and (430.33,605.88) .. (430.33,609.44) ;  
+%Shape: Arc [id:dp3822867946138577] 
+\draw  [draw opacity=0][line width=3.75]  (430.33,609.44) .. controls (430.33,609.44) and (430.33,609.44) .. (430.33,609.44) .. controls (430.33,605.88) and (432.68,602.99) .. (435.58,602.99) .. controls (438.47,602.99) and (440.82,605.88) .. (440.82,609.44) -- (435.58,609.44) -- cycle ; \draw  [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]  (430.33,609.44) .. controls (430.33,609.44) and (430.33,609.44) .. (430.33,609.44) .. controls (430.33,605.88) and (432.68,602.99) .. (435.58,602.99) .. controls (438.47,602.99) and (440.82,605.88) .. (440.82,609.44) ;  
+%Shape: Arc [id:dp7855146034126734] 
+\draw  [draw opacity=0][line width=3.75]  (440.82,609.44) .. controls (440.82,609.44) and (440.82,609.44) .. (440.82,609.44) .. controls (440.82,605.88) and (443.17,602.99) .. (446.07,602.99) .. controls (448.96,602.99) and (451.31,605.88) .. (451.31,609.44) -- (446.07,609.44) -- cycle ; \draw  [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]  (440.82,609.44) .. controls (440.82,609.44) and (440.82,609.44) .. (440.82,609.44) .. controls (440.82,605.88) and (443.17,602.99) .. (446.07,602.99) .. controls (448.96,602.99) and (451.31,605.88) .. (451.31,609.44) ;  
+%Straight Lines [id:da9538215426288255] 
+\draw [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]    (419.84,608.9) -- (419.84,617.48) ;
+%Straight Lines [id:da5962010200970228] 
+\draw [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]    (430.33,608.9) -- (430.33,617.48) ;
+%Straight Lines [id:da306203455361274] 
+\draw [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]    (440.82,608.9) -- (440.82,617.48) ;
+%Straight Lines [id:da10660022707019867] 
+\draw [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]    (451.31,608.9) -- (451.31,617.48) ;
+%Shape: Arc [id:dp553392026465465] 
+\draw  [draw opacity=0][line width=3.75]  (440.93,595.5) .. controls (440.93,595.5) and (440.93,595.5) .. (440.93,595.5) .. controls (440.93,599.06) and (438.59,601.95) .. (435.69,601.95) .. controls (432.79,601.95) and (430.44,599.06) .. (430.44,595.5) -- (435.69,595.5) -- cycle ; \draw  [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]  (440.93,595.5) .. controls (440.93,595.5) and (440.93,595.5) .. (440.93,595.5) .. controls (440.93,599.06) and (438.59,601.95) .. (435.69,601.95) .. controls (432.79,601.95) and (430.44,599.06) .. (430.44,595.5) ;  
+%Straight Lines [id:da9651027344075213] 
+\draw [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]    (430.45,578.24) -- (430.44,596.5) ;
+%Straight Lines [id:da5692883121317123] 
+\draw [color={rgb, 255:red, 0; green, 89; blue, 171 }  ,draw opacity=1 ][line width=3.75]    (440.94,578.24) -- (440.93,596.5) ;
+
+% Text Node
+\draw (316.45,598.31) node [anchor=north west][inner sep=0.75pt]  [font=\LARGE] [align=left] {{\fontfamily{ptm}\selectfont Université}};
+% Text Node
+\draw (342.26,618.62) node [anchor=north west][inner sep=0.75pt]  [font=\LARGE] [align=left] {{\fontfamily{ptm}\selectfont de Montréal}};
+\end{tikzpicture}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+
+\section{Introduction}
+
+This project implements the branch-and-price algorithm for the Multiple Knapsack Problem (MKP) described in Lalonde et al.~\cite{lalonde2022branch}. The MKP asks: given $n$ items with weights $w_j$ and profits $p_j$, and $m$ knapsacks with capacities $c_i$, how do we pack items into knapsacks to maximize total profit?
+
+The classic formulation looks like this:
+\begin{align}
+\max \quad & \sum_{i=1}^{m} \sum_{j=1}^{n} p_j x_{ij} \\
+\text{s.t.} \quad & \sum_{j=1}^{n} w_j x_{ij} \leq c_i \quad \forall i \\
+& \sum_{i=1}^{m} x_{ij} \leq 1 \quad \forall j \\
+& x_{ij} \in \{0,1\}
+\end{align}
+
+where $x_{ij} = 1$ means item $j$ goes in knapsack $i$.
+
+The paper's approach is interesting because it reformulates the problem to separate the question of \emph{which items to select} from \emph{which bin they go in}. This turns out to make the algorithm much more efficient. My goal was to implement this algorithm in Java and see how well it works on the benchmark instances.
+
+\subsection{What I set out to do}
+
 \begin{itemize}
-  \item \textbf{L2 relaxation (eqs. 13--18):} binary $t_j$ for item selection, binary $x_{ij}$ for assignment, with knapsack capacities, linking constraints, and aggregated capacity $\sum_j w_j t_j \le \sum_i c_i$.
-  \item \textbf{Dantzig--Wolfe master (eqs. 28--33):} pattern pools $P_0$ (aggregated capacity) and $P_i$ (per bin) with variables $y_a$ plus dual-cut variables $s_j$. Constraint (31) is present but the upper bound defaults to total profit and is not tightened during the search.
-  \item \textbf{Pattern seeding:} empty and single-item patterns, multiple greedy patterns by ratio/profit/weight, and a core DP-derived pattern per pool.
-  \item \textbf{Column generation:} restricted master built via \texttt{DWMasterLPBuilder}, solved with OR-Tools LP (GLOP). Duals feed knapsack pricing for $P_0$ and each $P_i$; profitable columns are added unless duplicate or incompatible with branching filters. No stabilization, dual-bound stopping, or subgradient phase is implemented.
-  \item \textbf{Branch-and-price:} best-first on node upper bounds. Branch only on fractional $t_j$. If $t$ is integral but $x$ is fractional, a CP-SAT feasibility check (VSBPP-SAT) attempts to repair assignments; infeasible selections add a no-good cut. Cuts are simple set forbiddances (no $E(S)$ strengthening).
+\item Implement the core branch-and-price algorithm from the paper
+\item Get it working on the SMALL benchmark dataset  
+\item Compare my results with what they report in the paper
+\item Figure out what worked, what didn't, and what I learned
 \end{itemize}
 
-\section{Comparison to Lalonde et al.\ (2022)}
+Full code is at \url{https://github.com/ZGaillard/BPMKP}. The README has build instructions and the Jupyter notebook \texttt{benchmark\_analysis.ipynb} has all the result analysis and plots.
+
+
+\section{The Algorithm}
+
+\subsection{L2 reformulation}
+
+The key innovation in the paper is introducing new variables $t_j$ that just say whether item $j$ is selected or not:
+
+\begin{align}
+\max \quad & \sum_{j=1}^{n} p_j t_j \\
+\text{s.t.} \quad & \sum_{j=1}^{n} w_j x_{ij} \leq c_i \quad \forall i \\
+& t_j \leq \sum_{i=1}^{m} x_{ij} \quad \forall j \\
+& \sum_{j=1}^{n} w_j t_j \leq \sum_{i=1}^{m} c_i \\
+& t_j, x_{ij} \in \{0,1\}
+\end{align}
+
+Now the objective only depends on $t_j$, and the $x_{ij}$ variables just handle the bin assignments. This means when we branch, we can branch on "is this item selected?" instead of "which bin does this item go in?", which dramatically cuts down the search space.
+
+\subsection{Column generation and patterns}
+
+The Dantzig-Wolfe reformulation~\cite{dantzig1960decomposition} represents solutions as "patterns"—basically, feasible subsets of items that can fit in a knapsack. We have pattern pools $P^0$ (for the aggregated capacity) and $P^i$ for each individual knapsack $i$.
+
+The column generation works like this:
+\begin{enumerate}
+\item Start with a small set of patterns (empty patterns, single items, some greedy ones)
+\item Solve the restricted master LP
+\item Use the dual values to solve pricing subproblems (these are just knapsack problems)
+\item If we find patterns with positive reduced cost, add them and repeat
+\item Otherwise, we're done with this node
+\end{enumerate}
+
+I'm using OR-Tools~\cite{ortools} for the LP solving (the GLOP solver).
+
+\subsection{Branching}
+
+When the LP solution has fractional $t_j$ values, I pick the most fractional one and branch on it—create two child nodes, one where $t_j = 0$ (item excluded) and one where $t_j = 1$ (item selected).
+
+One interesting case: if all $t_j$ are integer but some $x_{ij}$ are fractional, we know which items are selected but not how to assign them. In this case, I call a CP-SAT solver to try to find a feasible bin assignment. If it can't, I add a "no-good cut" that forbids this combination of items and resolve the LP at the same node.
+
+\subsection{What I didn't implement}
+
+A bunch of things from the paper that I skipped:
 \begin{itemize}
-  \item No instance reduction or MULKNAP warm-start; the paper uses both as preprocessing and incumbent tightening.
-  \item Constraint (31) is static (total profit) and never updated to the incumbent floor, weakening the integrality push noted in the paper.
-  \item Column generation omits dual bound checks (eq. 44), subgradient-based column generation when stalled, and any stabilization. Pricing ignores duals from no-good cuts and does not use the $E(S)$ strengthening (eq. 35).
-  \item Branching rule is ``most fractional $t_j$'' only; the paper limits candidates and picks the largest-impact variable, and applies dominance filtering and Lagrangian probing to fix variables aggressively.
-  \item Packing subproblem differs: the paper uses a staged heuristic/set-packing/arc-flow pipeline that can prove infeasibility; the implementation uses a single CP-SAT feasibility attempt and treats UNKNOWN by adding a cut.
-  \item Tooling differs (OR-Tools LP/CP-SAT vs.\ CPLEX), so numerical behavior and performance bounds are not directly comparable.
+\item No instance reduction preprocessing
+\item No MULKNAP warm-start
+\item The upper bound in constraint (31) is static—I don't update it with the incumbent
+\item No dual bound checks during column generation
+\item No stabilization or subgradient fallback
+\item Simple branching rule (most fractional) instead of their more sophisticated candidate selection
+\item CP-SAT only for packing checks—they use a three-stage approach (heuristic, then set-packing MIP, then arc-flow~\cite{valeriodecarvalho1999exact,delorme2020enhanced})
 \end{itemize}
 
-\section{Experiments}
-Configuration unless noted: time limit 600 s/instance, max nodes 1000, OR-Tools LP, default pattern seeding, branch-and-price with gap tolerance as stated.
+So this is really a simplified version of their algorithm.
+
+
+\section{Implementation}
+
+\subsection{Code structure}
+
+The code is in Java 25 with Maven. Main packages:
+\begin{itemize}
+\item \texttt{model/} and \texttt{io/} — data structures and file reading
+\item \texttt{formulation/} — the different MKP formulations
+\item \texttt{solver/lp/} — LP solver interface (wraps OR-Tools)
+\item \texttt{solver/cg/} — column generation
+\item \texttt{solver/bp/} — branch-and-price
+\item \texttt{solver/vsbpp/} — the packing feasibility checker
+\item \texttt{benchmark/} — batch benchmark runner
+\end{itemize}
+
+To run: \texttt{mvn compile} then \texttt{mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.Main} for the CLI, or \texttt{MainBenchmark} for batch mode.
+
+\subsection{Design decisions}
+
+One thing I had to figure out: how to store pattern variables. Initially I tried using an \texttt{IdentityHashMap} but ran into problems because it uses reference equality, not content equality. So if I created two patterns with the same items, they'd be treated as different patterns. 
+
+I ended up making a \texttt{PatternVariable} class that wraps the pattern content, keeps track of which pool it belongs to, and stores the LP value. This made testing much easier since I could check pattern equality based on content.
+
+For the VSBPP-SAT subproblem (checking if a set of items can be packed), I just use OR-Tools CP-SAT directly. The paper does something more elaborate with multiple stages, but CP-SAT works well enough for the SMALL instances.
+
+
+\section{Results}
+
+A more complete analysis of my results is given in the notebook \texttt{benchmark\_analysis.ipynb}.\\
+
+I ran the solver on the SMALL dataset (179 instances after one crashed) and a subset of FK\_1. Configuration: 600 second time limit, 1000 node limit.
 
 \begin{center}
-\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{@{}lcccccl@{}}
+\begin{tabular}{lccccc}
 \toprule
-Dataset/config & Total & Optimal & Gap-limit & Avg gap & Avg time (s) & Notes \\
+Dataset & Instances & Optimal & Gap limit & Avg gap & Avg time (s) \\
 \midrule
-SMALL, gap 1\% & 179 & 105 & 74 & 0.000974 & 12.745 & From \texttt{time-limit600\_gap0.01\_max-nodes1000} \\
-SMALL, gap 0\% & 179 & 179 & 0 & 0.000000 & 16.468 & Tighter gap; slower \\
-SMALL, gap 0\%, 10 inst. & 10 & 10 & 0 & 0.000000 & 0.092 & Demo subset run \\
-FK\_1, first 10, gap 0\% & 10 & 10 & 0 & 0.000000 & 8.487 & From \texttt{...max-instances10} \\
+SMALL (1\% gap) & 179 & 105 & 74 & 0.000974 & 12.7 \\
+SMALL (0\% gap) & 179 & 179 & 0 & 0.0 & 16.5 \\
+FK\_1 (10 inst., 0\%) & 10 & 10 & 0 & 0.0 & 8.5 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-All detailed CSV/JSON outputs are under \texttt{benchmark\_results/}, with plots and summaries in \texttt{analysis\_out/}.
+With 0\% gap tolerance (proven optimality), I solved all 179 SMALL instances in about 16.5 seconds average. If I allow a 1\% gap, it's faster (12.7 seconds) but about 40\% of instances stop at the gap limit instead of proving optimality.
 
-\section{Future Improvements}
+The FK\_1 subset also works well—all 10 solved quickly. I haven't tried the full FK\_1 or the larger FK datasets yet (FK\_2, FK\_3, FK\_4 would probably need the more sophisticated features I didn't implement).
+
+All the detailed results are in \texttt{benchmark\_results/} and the analysis notebook has plots showing runtime distributions, gaps by instance type, etc.
+
+
+\section{Comparison with the paper}
+
+The paper reports solving all 180 SMALL instances to optimality in 1.3 seconds average (though on a faster machine—about 2x faster than mine, so adjust to ~2.8 seconds). My 16.5 seconds is slower, but I'm also missing several optimizations:
+
 \begin{itemize}
-  \item Tighten constraint (31) with the best incumbent and carry its dual into pricing.
-  \item Add dual-bound checks, stabilization, and subgradient-based column generation for stalled nodes.
-  \item Implement dominance filtering and Lagrangian probing; adopt the paper's branching candidate selection.
-  \item Strengthen no-good cuts with $E(S)$ and propagate their duals into $P_0$ pricing.
-  \item Replace the CP-SAT-only VSBPP-SAT with the paper's staged heuristic/set-packing/arc-flow pipeline to prove infeasibility more often.
+\item No preprocessing to eliminate bins/items early
+\item Static upper bound weakens the formulation
+\item Simpler branching rule
+\item Less sophisticated packing solver
+\item OR-Tools instead of CPLEX (different numerics)
 \end{itemize}
 
+On the other hand, 16 seconds average for proven optimality on instances with 20-60 items and 10-20 knapsacks is pretty reasonable. The algorithm clearly works.
+
+What I found interesting: allowing a 1\% gap gives a 23\% speedup but you'd need to look at the individual gaps to see if that's acceptable for your application. For some instances the gap stays tiny; for others it might be the full 1\%.
+
+Other MKP algorithms include MULKNAP~\cite{pisinger1999exact}, 2D/PS+B~\cite{fukunaga2011branch}, and the decomposition methods by Dell'Amico et al.~\cite{dellamico2019mathematical}. The branch-and-price approach in Lalonde et al.~\cite{lalonde2022branch} is current state-of-the-art for large instances.
+
+
+\section{What I learned}
+
+\subsection{The reformulation really matters}
+
+The L2 reformulation with $t_j$ variables is not just a theoretical nicety—it fundamentally changes how the algorithm explores the solution space. Branching on "item selected or not" instead of "item to which bin" is a huge win.
+
+\subsection{Pattern management is tricky}
+
+Getting the pattern storage right took some debugging. Java's reference vs. content equality for collections matters a lot. The explicit \texttt{PatternVariable} class was worth it for maintainability.
+
+\subsection{OR-Tools is powerful but has a learning curve}
+
+OR-Tools abstracts away a lot of details (basis management, tolerances, etc.) which is nice for getting started but makes debugging numerical issues harder. The CP-SAT solver works well for the packing subproblems though.
+
+\subsection{Column generation can be finicky}
+
+Some instances converged slowly. The paper's stabilization and subgradient techniques are probably necessary for harder instances. I saw some tailing-off behavior where the LP objective barely changes between iterations.
+
+\subsection{Implementation vs. theory gap}
+
+Reading the paper, it's not always obvious what's critical vs. what's optional. Turns out some of the features I skipped (like updating the constraint (31) bound) probably matter more than I thought. And the packing subproblem is harder than it looks—the paper's three-stage approach makes more sense after trying to solve these problems myself.
+
+
+\section{Future work}
+
+If I were to keep working on this:
+
+\textbf{First priority:}
+\begin{itemize}
+\item Update constraint (31) with the incumbent value
+\item Add dual bound checks to column generation
+\item Try the three-stage VSBPP-SAT solver from the paper
+\end{itemize}
+
+\textbf{Nice to have:}
+\begin{itemize}
+\item Stabilization for column generation
+\item Better branching variable selection
+\item Preprocessing and instance reduction
+\item Test on FK\_2, FK\_3, FK\_4 (larger instances)
+\end{itemize}
+
+Overall though, this was a good learning experience. Branch-and-price is an elegant approach and the algorithm works pretty well even with my simplified implementation.
+
+\newpage
+
+\appendix
+
+\section{System monitoring}
+
+For completeness, here's what system resource usage looked like during the benchmarks.
+
+Figure~\ref{fig:single} shows a single benchmark run—you can see the CPU and memory usage is pretty moderate, staying in one JVM process. Figure~\ref{fig:concurrent} shows three runs happening at once, which obviously uses more resources and they compete a bit.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{systemmonitor1.png}
+\caption{Resource usage during one benchmark run.}
+\label{fig:single}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{systemmonitor2.png}
+\caption{Resource usage during three concurrent runs.}
+\label{fig:concurrent}
+\end{figure}
+
+The memory requirements are reasonable for SMALL instances. For the larger FK datasets the process crash for now.
+
+
+\newpage
+
+\bibliographystyle{plain}
 \end{document}

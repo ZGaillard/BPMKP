@@ -1,0 +1,2 @@
+dataset,n,time_median,time_mean,time_p90,time_max,nodes_median,nodes_mean,optimal_rate
+SMALL,179,0.945,16.46798324022346,44.678800000000045,256.664,3.0,49.17877094972067,1.0

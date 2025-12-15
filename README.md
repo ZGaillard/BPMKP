@@ -1,7 +1,4 @@
-# Branch-and-Price Multiple Knapsack Toolkit
-
-Branch-and-price implementation for the Multiple Knapsack Problem (MKP). It provides classic and relaxed formulations,
-column generation, and a full branching loop backed by OR-Tools.
+# Branch-and-Price for the Multiple Knapsack Problem
 
 ## What’s inside
 
@@ -17,11 +14,11 @@ column generation, and a full branching loop backed by OR-Tools.
 ## Submission report highlights
 
 This README plus `benchmark_analysis.ipynb` form the report I’m submitting with the code. Headline results on the
-provided `SMALL` batch (`benchmark_results/SMALL_results.csv`):
+provided `SMALL` batch (`benchmark_results/time-limit600_gap0.01_max-nodes1000/SMALL_results.csv`):
 
-- 179 runs loaded; ~59% solved to proven optimality and the rest stopped on the gap limit with tiny residual gaps.
-- Runtime is light: median 0.65s, 90th percentile < 1s, with one visible outlier around 221s (captured in the plots).
-- Branching remains shallow (median 3 nodes, max 651), matching the design goal of strong root relaxations.
+- 179 runs loaded; ~58.7% solved to proven optimality and ~41.3% stopped at the 1% gap limit.
+- Runtime: median 0.64s, mean 12.74s, 90th percentile 38.06s, max 204s (heavy tails from a few hard instances).
+- Branching remains shallow: median 3 nodes, mean ~40 nodes per instance.
 - The notebook writes plots/tables to `analysis_out/` so they can be dropped straight into the report without rerun.
 - If I add FK_* datasets later, I’ll re-run the notebook and append them as “extended benchmarks.”
 
@@ -100,13 +97,13 @@ See `src/main/resources/readme.txt` for the exact layout.
 ### Flow and key classes
 
 - **DW master build**: `L2RelaxedFormulation.toDantzigWolfeFormulation()` constructs the master; `PatternInitializer`
-  seeds singleton/empty patterns; `DWMasterLPBuilder` turns the DW model into a restricted LP.
+  seeds empty/singleton and greedy/core patterns; `DWMasterLPBuilder` turns the DW model into a restricted LP.
 - **Restricted master solve**: `ColumnGeneration` calls the LP solver (default `ORToolsSolver`), reads duals, and
   invokes `PricingProblem` (knapsack subproblem) to inject profitable patterns; terminates on optimality, iteration
   limit, or no improving column.
-- **Branching**: `BranchAndPrice` runs a best-first search over `BranchNode`s ordered by upper bound. `BranchingRule`/
-  `BranchingStrategy` decide which item/bin to fix, rebuild a node-specific master, and re-enter column generation.
-- **No-good cuts**: `NoGoodCutManager` tracks excluded patterns to avoid regenerating dominated branches.
+- **Branching**: `BranchAndPrice` runs a best-first search over `BranchNode`s ordered by upper bound. `BranchingRule`
+  picks a fractional item-selection variable `t_j`, rebuilds a node-specific master, and re-enters column generation.
+- **No-good cuts**: `NoGoodCutManager` tracks excluded item-selection sets (P0 patterns) discovered infeasible by SAT.
 - **Fractional repair**: When item selections are integral but assignments are fractional, `OrToolsCpSatVSBPPSATChecker`
   solves a SAT/CP feasibility fix before further branching.
 - **Statistics & summaries**: Each `BPResult` retains LB/UB, gap, runtime, and node counts; CLI batch runs print
