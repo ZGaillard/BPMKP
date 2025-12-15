@@ -1,0 +1,3 @@
+dataset,n,time_median,time_mean,time_p90,time_max,nodes_median,nodes_mean,optimal_rate
+FK_1,10,5.537,8.4869,15.351499999999996,23.294,2.5,3.9,1.0
+SMALL,10,0.045,0.09230000000000001,0.26839999999999997,0.344,1.0,3.2,1.0

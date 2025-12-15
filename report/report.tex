@@ -1,0 +1,60 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\title{Branch-and-Price Multiple Knapsack Toolkit}
+\date{\today}
+\begin{document}
+\maketitle
+
+\section{Overview}
+This codebase implements a branch-and-price solver for the Multiple Knapsack Problem (MKP) inspired by Lalonde et al.\ (2022). It provides classic and L2 formulations, a Dantzig--Wolfe master with column generation, and a branch-and-price loop with simple no-good cuts and a CP-SAT repair for fractional assignments. Benchmarks and plots are included for the SMALL and Falkenauer (FK) instance families.
+
+\section{Formulations and Algorithm}
+\begin{itemize}
+  \item \textbf{L2 relaxation (eqs. 13--18):} binary $t_j$ for item selection, binary $x_{ij}$ for assignment, with knapsack capacities, linking constraints, and aggregated capacity $\sum_j w_j t_j \le \sum_i c_i$.
+  \item \textbf{Dantzig--Wolfe master (eqs. 28--33):} pattern pools $P_0$ (aggregated capacity) and $P_i$ (per bin) with variables $y_a$ plus dual-cut variables $s_j$. Constraint (31) is present but the upper bound defaults to total profit and is not tightened during the search.
+  \item \textbf{Pattern seeding:} empty and single-item patterns, multiple greedy patterns by ratio/profit/weight, and a core DP-derived pattern per pool.
+  \item \textbf{Column generation:} restricted master built via \texttt{DWMasterLPBuilder}, solved with OR-Tools LP (GLOP). Duals feed knapsack pricing for $P_0$ and each $P_i$; profitable columns are added unless duplicate or incompatible with branching filters. No stabilization, dual-bound stopping, or subgradient phase is implemented.
+  \item \textbf{Branch-and-price:} best-first on node upper bounds. Branch only on fractional $t_j$. If $t$ is integral but $x$ is fractional, a CP-SAT feasibility check (VSBPP-SAT) attempts to repair assignments; infeasible selections add a no-good cut. Cuts are simple set forbiddances (no $E(S)$ strengthening).
+\end{itemize}
+
+\section{Comparison to Lalonde et al.\ (2022)}
+\begin{itemize}
+  \item No instance reduction or MULKNAP warm-start; the paper uses both as preprocessing and incumbent tightening.
+  \item Constraint (31) is static (total profit) and never updated to the incumbent floor, weakening the integrality push noted in the paper.
+  \item Column generation omits dual bound checks (eq. 44), subgradient-based column generation when stalled, and any stabilization. Pricing ignores duals from no-good cuts and does not use the $E(S)$ strengthening (eq. 35).
+  \item Branching rule is ``most fractional $t_j$'' only; the paper limits candidates and picks the largest-impact variable, and applies dominance filtering and Lagrangian probing to fix variables aggressively.
+  \item Packing subproblem differs: the paper uses a staged heuristic/set-packing/arc-flow pipeline that can prove infeasibility; the implementation uses a single CP-SAT feasibility attempt and treats UNKNOWN by adding a cut.
+  \item Tooling differs (OR-Tools LP/CP-SAT vs.\ CPLEX), so numerical behavior and performance bounds are not directly comparable.
+\end{itemize}
+
+\section{Experiments}
+Configuration unless noted: time limit 600 s/instance, max nodes 1000, OR-Tools LP, default pattern seeding, branch-and-price with gap tolerance as stated.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}lcccccl@{}}
+\toprule
+Dataset/config & Total & Optimal & Gap-limit & Avg gap & Avg time (s) & Notes \\
+\midrule
+SMALL, gap 1\% & 179 & 105 & 74 & 0.000974 & 12.745 & From \texttt{time-limit600\_gap0.01\_max-nodes1000} \\
+SMALL, gap 0\% & 179 & 179 & 0 & 0.000000 & 16.468 & Tighter gap; slower \\
+SMALL, gap 0\%, 10 inst. & 10 & 10 & 0 & 0.000000 & 0.092 & Demo subset run \\
+FK\_1, first 10, gap 0\% & 10 & 10 & 0 & 0.000000 & 8.487 & From \texttt{...max-instances10} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All detailed CSV/JSON outputs are under \texttt{benchmark\_results/}, with plots and summaries in \texttt{analysis\_out/}.
+
+\section{Future Improvements}
+\begin{itemize}
+  \item Tighten constraint (31) with the best incumbent and carry its dual into pricing.
+  \item Add dual-bound checks, stabilization, and subgradient-based column generation for stalled nodes.
+  \item Implement dominance filtering and Lagrangian probing; adopt the paper's branching candidate selection.
+  \item Strengthen no-good cuts with $E(S)$ and propagate their duals into $P_0$ pricing.
+  \item Replace the CP-SAT-only VSBPP-SAT with the paper's staged heuristic/set-packing/arc-flow pipeline to prove infeasibility more often.
+\end{itemize}
+
+\end{document}

@@ -12,8 +12,9 @@ public class BenchmarkConfig {
     private int maxNodes = 10000;
     private boolean verbose = false;
     private int maxInstancesPerSet = Integer.MAX_VALUE;
-    private final List<String> instanceFilter = List.of(); // empty = all
-    private final List<String> instanceSets = Arrays.asList("SMALL", "FK_1", "FK_2", "FK_3", "FK_4");
+    private List<String> instanceFilter = List.of(); // empty = all
+    private List<String> skipSets = List.of();       // empty = none
+    private List<String> instanceSets = Arrays.asList("SMALL", "FK_1", "FK_2", "FK_3", "FK_4");
     private String outputDirectory = "benchmark_results";
 
     public double getGapTolerance() {
@@ -65,8 +66,30 @@ public class BenchmarkConfig {
         return instanceFilter;
     }
 
+    public BenchmarkConfig setInstanceFilter(List<String> instanceFilter) {
+        this.instanceFilter = instanceFilter == null ? List.of() : List.copyOf(instanceFilter);
+        return this;
+    }
+
+    public List<String> getSkipSets() {
+        return skipSets;
+    }
+
+    /**
+     * Skip entire instance sets by name (case-insensitive). Empty list = none skipped.
+     */
+    public BenchmarkConfig setSkipSets(List<String> skipSets) {
+        this.skipSets = skipSets == null ? List.of() : List.copyOf(skipSets);
+        return this;
+    }
+
     public List<String> getInstanceSets() {
         return instanceSets;
+    }
+
+    public BenchmarkConfig setInstanceSets(List<String> instanceSets) {
+        this.instanceSets = instanceSets == null ? List.of() : List.copyOf(instanceSets);
+        return this;
     }
 
     public String getOutputDirectory() {

@@ -26,6 +26,10 @@ public class BenchmarkRunner {
         Map<String, BenchmarkSummary> summaries = new LinkedHashMap<>();
         long start = System.currentTimeMillis();
         for (String set : config.getInstanceSets()) {
+            if (shouldSkipSet(set)) {
+                System.out.println("Skipping set " + set + " (per config)");
+                continue;
+            }
             BenchmarkSummary summary = runSet(set);
             summaries.put(set, summary);
         }
@@ -111,5 +115,14 @@ public class BenchmarkRunner {
             }
         }
         return new InstanceSet(setName, names, instances);
+    }
+
+    private boolean shouldSkipSet(String setName) {
+        for (String skip : config.getSkipSets()) {
+            if (setName.equalsIgnoreCase(skip)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

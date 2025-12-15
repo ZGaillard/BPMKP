@@ -12,9 +12,10 @@ public class MainBenchmark {
         BenchmarkConfig config = new BenchmarkConfig()
                 .setVerbose(false)
                 .setTimeLimitSeconds(600)
-                .setGapTolerance(0.0)
+                .setGapTolerance(0)
                 .setMaxNodes(1000)
-                .setMaxInstancesPerSet(10);
+                .setMaxInstancesPerSet(10)
+	    .setSkipSets(java.util.List.of("SMALL", "TK_1"));
 
         config.setOutputDirectory(buildOutputDirectory(config));
 
