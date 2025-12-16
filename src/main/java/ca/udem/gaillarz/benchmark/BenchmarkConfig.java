@@ -14,8 +14,10 @@ public class BenchmarkConfig {
     private int maxInstancesPerSet = Integer.MAX_VALUE;
     private List<String> instanceFilter = List.of(); // empty = all
     private List<String> skipSets = List.of();       // empty = none
-    private List<String> instanceSets = Arrays.asList("SMALL", "FK_1", "FK_2", "FK_3", "FK_4");
+    private final List<String> instanceSets = Arrays.asList("SMALL", "FK_1", "FK_2", "FK_3", "FK_4");
     private String outputDirectory = "benchmark_results";
+    private long satTimeLimitMs = 5000;              // 2-10s reasonable; 5s avoids thrash without stalling
+    private double lpTimeLimitSeconds = 30.0;        // LPs usually subsecond; 30s caps rare stalls
 
     public double getGapTolerance() {
         return gapTolerance;
@@ -66,11 +68,6 @@ public class BenchmarkConfig {
         return instanceFilter;
     }
 
-    public BenchmarkConfig setInstanceFilter(List<String> instanceFilter) {
-        this.instanceFilter = instanceFilter == null ? List.of() : List.copyOf(instanceFilter);
-        return this;
-    }
-
     public List<String> getSkipSets() {
         return skipSets;
     }
@@ -87,18 +84,20 @@ public class BenchmarkConfig {
         return instanceSets;
     }
 
-    public BenchmarkConfig setInstanceSets(List<String> instanceSets) {
-        this.instanceSets = instanceSets == null ? List.of() : List.copyOf(instanceSets);
-        return this;
-    }
-
     public String getOutputDirectory() {
         return outputDirectory;
     }
 
-    public BenchmarkConfig setOutputDirectory(String outputDirectory) {
+    public void setOutputDirectory(String outputDirectory) {
         this.outputDirectory = outputDirectory;
-        return this;
+    }
+
+    public long getSatTimeLimitMs() {
+        return satTimeLimitMs;
+    }
+
+    public double getLpTimeLimitSeconds() {
+        return lpTimeLimitSeconds;
     }
 
     @Override

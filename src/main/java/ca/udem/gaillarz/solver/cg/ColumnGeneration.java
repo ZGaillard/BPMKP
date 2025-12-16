@@ -79,7 +79,7 @@ public class ColumnGeneration {
             lpBuildTimeMs += System.currentTimeMillis() - buildStart;
 
             long lpSolveStart = System.currentTimeMillis();
-            LPSolution lpSolution = lpSolver.solve(lp);
+            LPSolution lpSolution = lpSolver.solve(lp, params.getLpTimeLimitSeconds());
             lpSolveTimeMs += System.currentTimeMillis() - lpSolveStart;
 
             if (lpSolution.isUnbounded()) {
@@ -190,18 +190,6 @@ public class ColumnGeneration {
     // Accessors
     public int getIterations() {
         return iterations;
-    }
-
-    public int getPatternsAdded() {
-        return patternsAdded;
-    }
-
-    public double getBestObjective() {
-        return bestObjective;
-    }
-
-    public long getTotalTimeMs() {
-        return totalTimeMs;
     }
 
     private boolean violatesBranching(PricingResult result, Set<Integer> forbidden, Set<Integer> required) {

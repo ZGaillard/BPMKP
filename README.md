@@ -54,6 +54,8 @@ mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.Main
 mvn exec:java -Dexec.mainClass=ca.udem.gaillarz.benchmark.MainBenchmark
 ```
 
+You 
+
 ## CLI usage
 
 When the CLI starts you can:

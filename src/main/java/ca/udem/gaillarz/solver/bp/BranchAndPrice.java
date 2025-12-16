@@ -33,6 +33,8 @@ public class BranchAndPrice {
     private int maxNodes = Integer.MAX_VALUE;
     private long timeLimitMs = Long.MAX_VALUE;
     private double gapTolerance = DEFAULT_GAP_TOLERANCE;
+    private long satTimeLimitMs = 2000L; // default CP-SAT feasibility timeout
+    private double lpTimeLimitSeconds = Double.POSITIVE_INFINITY;
     private boolean verbose = true;
     // Global state
     private double globalLB = 0.0;
@@ -40,15 +42,7 @@ public class BranchAndPrice {
     private ClassicSolution bestSolution;
     // Stats
     private int nodesProcessed;
-    private int nodesPruned;
-    private int nodesInfeasible;
-    private int integralNodes;
     private long startTime;
-    private long totalCGTimeMs;
-    private long totalLpBuildTimeMs;
-    private long totalLpSolveTimeMs;
-    private long totalPricingTimeMs;
-    private long totalSatTimeMs;
 
     public BranchAndPrice(MKPInstance instance) {
         this(instance, new ORToolsSolver());
@@ -72,6 +66,16 @@ public class BranchAndPrice {
 
     public BranchAndPrice setGapTolerance(double gapTolerance) {
         this.gapTolerance = gapTolerance;
+        return this;
+    }
+
+    public BranchAndPrice setSatTimeLimitMs(long satTimeLimitMs) {
+        this.satTimeLimitMs = satTimeLimitMs;
+        return this;
+    }
+
+    public BranchAndPrice setLpTimeLimitSeconds(double lpTimeLimitSeconds) {
+        this.lpTimeLimitSeconds = lpTimeLimitSeconds;
         return this;
     }
 
@@ -107,8 +111,15 @@ public class BranchAndPrice {
         );
         queue.add(root);
 
+        int nodesPruned;
+        int nodesInfeasible;
+        int integralNodes;
         nodesProcessed = nodesPruned = nodesInfeasible = integralNodes = 0;
-        totalCGTimeMs = totalLpBuildTimeMs = totalLpSolveTimeMs = totalPricingTimeMs = totalSatTimeMs = 0L;
+        long totalSatTimeMs;
+        long totalPricingTimeMs;
+        long totalLpBuildTimeMs;
+        long totalLpSolveTimeMs;
+        long totalCGTimeMs = totalLpBuildTimeMs = totalLpSolveTimeMs = totalPricingTimeMs = totalSatTimeMs = 0L;
 
         while (!queue.isEmpty()) {
             if (nodesProcessed >= maxNodes) {
@@ -152,7 +163,9 @@ public class BranchAndPrice {
 
             ColumnGeneration cg = new ColumnGeneration(nodeMaster, lpSolver);
             cg.setBranchingConstraints(node.getForbiddenItems(), node.getRequiredItems());
-            CGParameters cgParams = new CGParameters().setVerbose(verbose);
+            CGParameters cgParams = new CGParameters()
+                    .setVerbose(verbose)
+                    .setLpTimeLimitSeconds(lpTimeLimitSeconds);
             CGResult cgResult = cg.solve(cgParams);
             totalCGTimeMs += cgResult.solveTimeMs();
             totalLpBuildTimeMs += cgResult.lpBuildTimeMs();
@@ -229,7 +242,7 @@ public class BranchAndPrice {
 
             // t is integer but x is fractional/invalid: run VSBPP feasibility
             if (integerT && !integerX) {
-                VSBPPSATResult feas = feasibilityChecker.checkFeasibility(instance, l2Sol, 2000);
+                VSBPPSATResult feas = feasibilityChecker.checkFeasibility(instance, l2Sol, satTimeLimitMs);
                 totalSatTimeMs += (long) feas.solveTimeMs();
                 if (feas.status() == VSBPPSATStatus.FEASIBLE && feas.itemToBin() != null) {
                     integralNodes++;

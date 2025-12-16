@@ -70,6 +70,8 @@ public class BenchmarkRunner {
                     .setVerbose(config.isVerbose())
                     .setGapTolerance(config.getGapTolerance())
                     .setMaxNodes(config.getMaxNodes())
+                    .setSatTimeLimitMs(config.getSatTimeLimitMs())
+                    .setLpTimeLimitSeconds(config.getLpTimeLimitSeconds())
                     .setTimeLimitMs(config.getTimeLimitSeconds() * 1000);
             BPResult result = solver.solve();
             return new BenchmarkResult(name, setName, instance, result);

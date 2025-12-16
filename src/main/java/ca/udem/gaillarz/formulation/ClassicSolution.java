@@ -2,9 +2,7 @@ package ca.udem.gaillarz.formulation;
 
 import ca.udem.gaillarz.model.MKPInstance;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Represents a solution to the Classic MKP formulation.
@@ -98,19 +96,6 @@ public class ClassicSolution {
      */
     public boolean isItemInKnapsack(int knapsackId, int itemId) {
         return assignment[knapsackId][itemId];
-    }
-
-    /**
-     * Get the knapsack to which an item is assigned.
-     *
-     * @param itemId Item index
-     * @return Knapsack index, or -1 if unassigned
-     */
-    public int getKnapsackForItem(int itemId) {
-        for (int i = 0; i < numKnapsacks; i++) {
-            if (assignment[i][itemId]) return i;
-        }
-        return -1;
     }
 
     /**
@@ -237,16 +222,19 @@ public class ClassicSolution {
      */
     public String toDetailedString(MKPInstance instance) {
         StringBuilder sb = new StringBuilder();
-        int width = 32;
-        String border = "─".repeat(width - 2);
-
+        List<String> rows = new ArrayList<>();
         int totalProfit = 0;
         boolean feasible = true;
+        int assignedItems = 0;
+        int usedKnapsacks = 0;
 
-        sb.append("┌").append(border).append("┐\n");
-
+        // Build rows without padding first
         for (int i = 0; i < numKnapsacks; i++) {
             Set<Integer> items = getItemsInKnapsack(i);
+            assignedItems += items.size();
+            if (!items.isEmpty()) {
+                usedKnapsacks++;
+            }
             int ksWeight = items.stream().mapToInt(j -> instance.getItem(j).weight()).sum();
             int ksProfit = items.stream().mapToInt(j -> instance.getItem(j).profit()).sum();
             totalProfit += ksProfit;
@@ -256,30 +244,25 @@ public class ClassicSolution {
             if (overflow) feasible = false;
 
             String warning = overflow ? " ⚠️" : "";
-            sb.append(String.format("│ Knapsack %d (used: %d/%d)%s", i, ksWeight, capacity, warning));
-            sb.append(" ".repeat(Math.max(0, width - 26 - warning.length())));
-            sb.append("│\n");
-
-            sb.append(String.format("│   Items: %-" + (width - 13) + "s │\n", items));
+            rows.add(String.format("Knapsack %d (used: %d/%d)%s", i, ksWeight, capacity, warning));
+            rows.add("  Items: " + items);
 
             if (!items.isEmpty()) {
                 String weights = items.stream()
                         .map(j -> String.valueOf(instance.getItem(j).weight()))
                         .reduce((a, b) -> a + ", " + b).orElse("");
-                sb.append(String.format("│   Weights: %-" + (width - 15) + "s │\n",
-                        weights.length() > width - 15 ? weights.substring(0, width - 18) + "..." : weights));
+                rows.add("  Weights: " + weights);
 
                 String profits = items.stream()
                         .map(j -> String.valueOf(instance.getItem(j).profit()))
                         .reduce((a, b) -> a + ", " + b).orElse("");
-                sb.append(String.format("│   Profits: %-" + (width - 15) + "s │\n",
-                        profits.length() > width - 15 ? profits.substring(0, width - 18) + "..." : profits));
+                rows.add("  Profits: " + profits);
 
-                sb.append(String.format("│   Total: w=%d, p=%-" + (width - 21) + "d │\n", ksWeight, ksProfit));
+                rows.add(String.format("  Total: w=%d, p=%d", ksWeight, ksProfit));
             }
 
             if (i < numKnapsacks - 1) {
-                sb.append("├").append(border).append("┤\n");
+                rows.add(null); // separator marker
             }
         }
 
@@ -288,27 +271,52 @@ public class ClassicSolution {
         for (int j = 0; j < numItems; j++) {
             if (!isItemAssigned(j)) unassigned.add(j);
         }
-
-        sb.append("├").append(border).append("┤\n");
-        String unassignedStr = unassigned.toString();
-        if (unassignedStr.length() > width - 15) {
-            unassignedStr = unassignedStr.substring(0, width - 18) + "...";
-        }
-        sb.append(String.format("│ Unassigned: %-" + (width - 15) + "s │\n", unassignedStr));
+        rows.add(null); // separator before unassigned
         if (!unassigned.isEmpty()) {
-            sb.append(String.format("│ %-" + (width - 4) + "s │\n", "Unassigned details:"));
             for (int j : unassigned) {
                 int w = instance.getItem(j).weight();
                 int p = instance.getItem(j).profit();
-                sb.append(String.format("│   item %2d: w=%4d p=%4d %-" + (width - 23) + "s │\n", j, w, p, ""));
+                rows.add(String.format("  item %2d: w=%4d p=%4d", j, w, p));
             }
+        } else {
+            rows.add("Unassigned: []");
         }
-        sb.append("└").append(border).append("┘\n");
 
-        sb.append(String.format("Total profit: %d\n", totalProfit));
-        sb.append(String.format("Feasible: %s\n", feasible ? "✓" : "✗ (capacity violations)"));
+        // Prepend summary block inside the table
+        List<String> withSummary = new ArrayList<>();
+        withSummary.add("Summary");
+        withSummary.add("  Profit: " + totalProfit);
+        withSummary.add("  Feasible: " + (feasible ? "yes" : "no (capacity violations)"));
+        withSummary.add(String.format("  Assigned items: %d/%d", assignedItems, numItems));
+        withSummary.add(String.format("  Used knapsacks: %d/%d", usedKnapsacks, numKnapsacks));
+        withSummary.add(null);
+        withSummary.addAll(rows);
+        rows = withSummary;
+
+        int maxLen = rows.stream()
+                .filter(Objects::nonNull)
+                .mapToInt(String::length)
+                .max()
+                .orElse(0);
+        int innerWidth = Math.max(48, maxLen + 2); // roomier box; at least 48 chars wide
+        String horizontal = "─".repeat(innerWidth);
+
+        sb.append("┌").append(horizontal).append("┐\n");
+        for (String line : rows) {
+            if (line == null) {
+                sb.append("├").append(horizontal).append("┤\n");
+                continue;
+            }
+            sb.append(padBoxLine(line, innerWidth));
+        }
+        sb.append("└").append(horizontal).append("┘\n");
 
         return sb.toString();
+    }
+
+    private String padBoxLine(String content, int innerWidth) {
+        int padding = Math.max(0, innerWidth - content.length() - 1); // -1 because we add a leading space
+        return "│ " + content + " ".repeat(padding) + "│\n";
     }
 
     @Override

@@ -14,8 +14,8 @@ public class MainBenchmark {
                 .setTimeLimitSeconds(600)
                 .setGapTolerance(0)
                 .setMaxNodes(1000)
-                .setMaxInstancesPerSet(999)
-	    .setSkipSets(java.util.List.of("")); // e.g., List.of("FK_3", "FK_4")
+                .setMaxInstancesPerSet(100)
+	    .setSkipSets(java.util.List.of("")); // ex: List.of("FK_3", "FK_4")
 
         config.setOutputDirectory(buildOutputDirectory(config));
 
